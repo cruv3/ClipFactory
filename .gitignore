@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.env
+
+# Media & Temp Files (EXTREM WICHTIG!)
+gameplay/*.mp4
+gameplay/*.mkv
+output/*.mp4
+temp/*.wav
+temp/*.mp3
+temp/*.srt
+temp/*.json
+
+# Data & Reports
+video_history.json
+reports/*.txt
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+data
+
+kokoro_model/*
+ollama_models/*
