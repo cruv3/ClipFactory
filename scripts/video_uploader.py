@@ -2,6 +2,7 @@ import os
 import time
 import pickle
 import json
+import shutil
 
 from instagrapi import Client
 from tiktok_uploader.upload import upload_video
@@ -39,6 +40,15 @@ class VideoUploader:
         # YouTube
         yt_url = self._upload_to_youtube(video_path, yt_title, caption, final_tags)
         if yt_url: self._log_video_to_history(yt_url, strategy)
+
+        temp_run_dir = os.path.dirname(video_path)
+        if os.path.exists(temp_run_dir) and "__" in temp_run_dir:
+            try:
+                shutil.rmtree(temp_run_dir)
+                print(f"[+] Run folder cleaned up: {temp_run_dir}")
+            except Exception as e:
+                print(f"[!] Could not cleanup run folder: {e}")
+
 
     
     def _log_video_to_history(self, uploaded_url, strategy):

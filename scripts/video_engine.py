@@ -1,6 +1,5 @@
 import os
 import glob
-import shutil
 import subprocess
 import yt_dlp
 import platform
@@ -93,14 +92,6 @@ class VideoEngine:
                 except OSError as e:
                     print(f"[!] Could not delete chunk immediately (Errno 9 possible). OS holds lock. Error: {e}")
         
-        temp_run_dir = os.path.dirname(audio_path)
-        if os.path.exists(temp_run_dir) and "__" in temp_run_dir:
-            try:
-                shutil.rmtree(temp_run_dir)
-                print(f"[+] Run folder cleaned up: {temp_run_dir}")
-            except Exception as e:
-                print(f"[!] Could not cleanup run folder: {e}")
-
         return output_path
 
     def _create_text_clips(self, word_data):
