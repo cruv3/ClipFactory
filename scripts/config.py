@@ -30,6 +30,7 @@ OLLAMA_PULL_URL = f"{OLLAMA_BASE_URL}/api/pull"
 OLLAMA_TAGS_URL = f"{OLLAMA_BASE_URL}/api/tags"
 
 KOKORO_URL = os.getenv("KOKORO_URL", "http://192.168.2.124:8880/v1/audio/speech")
+KOKORO_URL_WEB = KOKORO_URL.replace("/v1/audio/speech", "/web/")
 
 # Intervals
 VIDEO_INTERVAL_HOURS = int(os.getenv("VIDEO_INTERVAL", 6))
