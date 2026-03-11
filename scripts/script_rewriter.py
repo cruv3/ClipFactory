@@ -24,13 +24,21 @@ class ScriptRewriter(OllamaProvider):
             """
         
         prompt = f"""
-        You are a viral TikTok storyteller. Expand the following short premise into a highly suspenseful, 60-second script (aim for around 130 to 150 words).
+        You are a master viral storyteller. Your task is to transform the premise into a FULL, highly cinematic narrative script for a 60-90 second video.
         
-        CRITICAL RULES:
-        1. Hook Style: {hook_style}. The first sentence must be an extreme hook.
-        2. EXPAND THE STORY: Amplify the core emotion of the premise. If it's scary, add creepy details. If it's family drama, emphasize the anger and betrayal. Describe what the narrator sees, hears, and feels to make it immersive.
-        3. Use very short, punchy sentences. (TikTok style)
-        4. ZERO CHATBOT FILLER. NO "Here is your script" or intro/outro. Just the raw spoken text.
+        WORD COUNT TARGET: 220 - 260 words. (CRITICAL: Do not write less than 200 words).
+
+        NARRATIVE ARCHITECTURE (Mandatory):
+        1. THE HOOK (0-5s): A devastating, controversial, or terrifying first sentence (Style: {hook_style}).
+        2. THE SETTING (5-30s): Establish the scene. Add intense sensory details. What does it smell like? How cold is the room? Make the listener feel they are THERE.
+        3. THE ESCALATION (30-60s): Something goes wrong. Introduce a twist or a realization. Increase the pacing with shorter sentences.
+        4. THE FINAL BLOW (60-90s): A shocking conclusion or a haunting cliffhanger. This MUST feel like a complete story arc.
+
+        STRICT STYLE RULES:
+        - Use "I" (first-person perspective).
+        - Use punchy, dramatic sentences.
+        - ZERO filler, ZERO intros. Start with the hook immediately.
+        - Invent names, locations, or specific dialogue if needed to reach the word count and make it immersive.
         
         {strategy_injection}
 
