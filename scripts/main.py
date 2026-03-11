@@ -35,9 +35,12 @@ async def main_loop():
 
     while True:
         if not rewriter.model_verified or not analyzer.model_verified or not voice_eng.model_verified:
-            time.sleep(30)
+            if not voice_eng.model_verified:
+                voice_eng.model_verified = voice_eng._verify_kokoro()  
+            print("[*] Waiting for backends (Ollama/Kokoro) to be ready...")
+            await asyncio.sleep(30)
             continue
-
+        
         try:
             # 1. Cleanup Check
             current_time = time.time()

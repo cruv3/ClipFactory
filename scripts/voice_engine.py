@@ -58,14 +58,20 @@ class VoiceEngine:
     def _verify_kokoro(self):
         print(f"[*] Checking Kokoro TTS at {KOKORO_URL}...")
         try:
-            requests.get(KOKORO_URL.replace("/v1/audio/speech", ""), timeout=3)
-            print("[+] Kokoro TTS is ready.")
-        except:
-            print("\n" + "!"*50)
-            print("CRITICAL ERROR: Kokoro TTS is unreachable!")
-            print(f"URL: {KOKORO_URL}")
-            print("!"*50 + "\n")
-            raise ConnectionError("Kokoro Backend offline.")
+            # Wir säubern die URL für den Root-Check
+            base_url = KOKORO_URL.replace("/v1/audio/speech", "")
+            response = requests.get(base_url, timeout=3)
+            
+            if response.status_code == 200:
+                print("[+] Kokoro TTS is ready.")
+                return True
+            return False
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+            print(f"[!] Kokoro TTS not reachable yet at {KOKORO_URL}...")
+            return False
+        except Exception as e:
+            print(f"[!] Unexpected TTS Check Error: {e}")
+            return False
 
 # --- TEST RUN ---
 if __name__ == "__main__":
