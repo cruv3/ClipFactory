@@ -5,7 +5,7 @@ import os
 from utils import StoryStrategy
 from utils import generate_story_id
 from config import (
-    OLLAMA_GENERATE_URL, DATA_DIR
+    OLLAMA_GENERATE_URL, DATA_DIR, VIDEO_CHUNKS_DIR
 )
 from ollama_provider import OllamaProvider
 
@@ -14,21 +14,31 @@ class StoryAnalyzer(OllamaProvider):
         self.available_voices = [
             "am_adam", "am_michael", "am_onyx", "am_echo", 
             "af_bella", "af_heart", "af_nicole", "af_sky", "af_nova",
-            "bm_george", "bm_lewis", "bm_daniel", "bf_emma", "bf_alice", "bf_isabella"
+            "bm_george", "bm_lewis", "bm_daniel", "bf_emma", "bf_alice", 
+            "bf_v0isabella"
         ]
     
     def analyzer(self, story_text):
+
+        available_folders = []
+        if os.path.exists(VIDEO_CHUNKS_DIR):
+            available_folders = [f for f in os.listdir(VIDEO_CHUNKS_DIR) if os.path.isdir(os.path.join(VIDEO_CHUNKS_DIR, f))]
+
         prompt = f"""
         Analyze this story and decide:
         1. Which voice fits best? (Choices: {self.available_voices})
+        
         2. What background gameplay or nature footage would fit? 
-           CRITICAL RULES FOR THE SEARCH QUERY:
+           Currently available folders: {available_folders}
+           
+           CRITICAL RULES FOR BACKGROUND:
+           - First, check if a suitable theme already exists in the 'Currently available folders' list. If yes, output that EXACT folder name.
+           - If NO existing folder fits the vibe of the story, invent a NEW generic folder name.
            - NEVER include specific details from the story (like "roommates" or "food").
-           - ALWAYS include: "no commentary", "no facecam", "4k".
-           - ONLY choose between generic categories like "minecraft parkour", "gta 5 racing", "asmr baking", or "cinematic drone nature".
-           Example for nature: "4k cinematic drone footage forest no people no commentary"
-           Example for gameplay: "gta 5 car racing gameplay no commentary 4k no hud"
+           - Keep new categories generic and format them with underscores (e.g., "minecraft_parkour", "gta5_racing", "cinematic_drone_nature").
+           
         3. Which hook style fits best to make this story viral? (e.g., Shocking, Mysterious, Emotional, etc.)
+        
         4. Create a viral CAPTION, a DESCRIPTION, and relevant HASHTAGS.
         
         STORY: "{story_text}"

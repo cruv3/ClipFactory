@@ -1,13 +1,12 @@
 import os
 import glob
+import shutil
 import subprocess
 import yt_dlp
 import platform
 from moviepy.config import change_settings
-from moviepy.editor import VideoFileClip, AudioFileClip, TextClip, CompositeVideoClip, ImageClip
+from moviepy.editor import VideoFileClip, AudioFileClip, TextClip, CompositeVideoClip
 import moviepy.video.fx.all as vfx
-from PIL import Image, ImageDraw
-import numpy as np
 import time
 
 from config import (
@@ -93,6 +92,8 @@ class VideoEngine:
                     print(f"[+] Used chunk deleted. Video saved at: {output_path}\n")
                 except OSError as e:
                     print(f"[!] Could not delete chunk immediately (Errno 9 possible). OS holds lock. Error: {e}")
+        
+        shutil.rmtree(os.path.dirname(audio_path))
         return True
 
     def _create_text_clips(self, word_data):
@@ -117,18 +118,6 @@ class VideoEngine:
             text_clips.append(txt_clip)
         
         return text_clips
-    
-    def _create_rounded_box(self, width, height, color, opacity, radius=25):
-        # Ein transparentes RGBA Bild erstellen
-        img = Image.new('RGBA', (width, height), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(img)
-        
-        # Die abgerundete Box zeichnen
-        r, g, b = color
-        alpha = int(opacity * 255)
-        draw.rounded_rectangle((0, 0, width, height), radius=radius, fill=(r, g, b, alpha))
-        
-        return np.array(img)
 
     def _download_and_slice(self, folder_name, search_query):
         forbidden_stuff = " -facecam -streamer -reaction -shorts"

@@ -98,12 +98,10 @@ async def main_loop():
                 print(f"[*] Uploading to Social Media...")
                 uploader.distribute_video(video_path, strategy)
                 print(f"[✅] Video successfully distributed!")
+                print(f"\n[*] Cycle finished. Next video in {VIDEO_INTERVAL_HOURS}h...")
+                await asyncio.sleep(VIDEO_INTERVAL_HOURS * 3600)
             else:
                 print(f"[🛑] Upload aborted by user via Telegram.")
-
-            # 9. Wait for next slot
-            print(f"\n[*] Cycle finished. Next video in {VIDEO_INTERVAL_HOURS}h...")
-            await asyncio.sleep(VIDEO_INTERVAL_HOURS * 3600)
 
         except KeyboardInterrupt:
             print("\nShutting down factory...")
