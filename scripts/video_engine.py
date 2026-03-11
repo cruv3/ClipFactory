@@ -10,7 +10,7 @@ from PIL import Image, ImageDraw
 import numpy as np
 
 from config import (
-    VIDEO_CHUNKS_DIR
+    VIDEO_CHUNKS_DIR, TEST_RUN
 )
 
 if platform.system() == "Windows":
@@ -20,14 +20,6 @@ else:
     change_settings({"IMAGEMAGICK_BINARY": "/usr/bin/convert"})
 
 class VideoEngine:
-    def __init__(self):
-        # --- TEST-SCHALTER (Hier einfach True/False ändern) ---
-        self.FLAGS = {
-            "USE_TEXT_BOX_BG": False,       # False = Kein abgerundeter Kasten hinter dem Text
-            "USE_TEXT_SHADOW": False,       # False = Kein Schatten unter dem Kasten
-            "DELETE_CHUNK_AFTER": False    # False = Video-Chunk für weitere Tests behalten
-        }
-
     def create_video(self, word_timestamps, audio_path, strategy):
         print("\n[*] Starting video production...")
         os.makedirs(strategy.output_dir, exist_ok=True)
@@ -68,9 +60,9 @@ class VideoEngine:
         video_clip.close()
         
         # Benutzten Chunk löschen
-        if self.FLAGS["DELETE_CHUNK_AFTER"]:
-             if os.path.exists(bg_video_path): os.remove(bg_video_path)
-        print(f"[+] Used chunk deleted. Video saved at: {output_path}\n")
+        if not TEST_RUN:
+            if os.path.exists(bg_video_path): os.remove(bg_video_path)
+            print(f"[+] Used chunk deleted. Video saved at: {output_path}\n")
         return True
 
     def _create_text_clips(self, word_data):
