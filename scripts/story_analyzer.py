@@ -76,7 +76,9 @@ class StoryAnalyzer(OllamaProvider):
                 parsed_json = json.loads(raw_content[start:end])
 
             # Jetzt Mapping auf die Dataclass (Punkt-Notation statt Keys)
-            final_path = os.path.join(DATA_DIR, parsed_json.get("folder_name", "general"), generate_story_id())
+            category = parsed_json.get("folder_name", "stories")
+            unique_id = f"{category}_{generate_story_id()}"
+            final_path = os.path.join(DATA_DIR, category, unique_id)
 
             return StoryStrategy(
                 voice=parsed_json.get("voice", "am_onyx"),

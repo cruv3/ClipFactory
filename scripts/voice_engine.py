@@ -42,7 +42,7 @@ class VoiceEngine:
             print(f"[!] TTS Error: {e}")
             return None
         
-    def get_word_timestamps(audio_path):
+    def get_word_timestamps(self, audio_path):
         model = whisper.load_model("base")
         result = model.transcribe(audio_path, verbose=False, word_timestamps=True)
         
