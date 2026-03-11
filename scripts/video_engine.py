@@ -112,6 +112,8 @@ class VideoEngine:
         return np.array(img)
 
     def _download_and_slice(self, folder_name, search_query):
+        forbidden_stuff = " -facecam -streamer -reaction -shorts"
+        full_query = f"{search_query} {forbidden_stuff} no commentary cinematic"
         print(f"\n[!] Inventory for '{folder_name}' empty. Searching YouTube: {search_query}")
         
         category_dir = os.path.join(VIDEO_CHUNKS_DIR, folder_name)
@@ -126,10 +128,11 @@ class VideoEngine:
             'noplaylist': True,
             'retries': 10,
             'fragment_retries': 10,
+            'match_filter': yt_dlp.utils.match_filter_func("duration > 600"),
         }
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.extract_info(f"ytsearch1:{search_query}", download=True)
+            ydl.extract_info(f"ytsearch1:{full_query}", download=True)
             
         print(f"[+] Download complete. Slicing into 90s chunks...")
         
@@ -140,6 +143,15 @@ class VideoEngine:
         try:
             subprocess.run(ffmpeg_command, check=True, shell=True)
             time.sleep(1)
+
+            generated_chunks = glob.glob(os.path.join(category_dir, "chunk_*.mp4"))
+            
+            for chunk in generated_chunks:
+                file_size_mb = os.path.getsize(chunk) / (1024 * 1024)
+                if file_size_mb < 5: 
+                    print(f"[-] Deleting tiny chunk (possible remainder): {chunk} ({file_size_mb:.2f}MB)")
+                    os.remove(chunk)
+
             if os.path.exists(temp_video):
                 os.remove(temp_video)
         except subprocess.CalledProcessError as e:
@@ -149,11 +161,11 @@ class VideoEngine:
         category_dir = os.path.join(VIDEO_CHUNKS_DIR, folder_name)
         os.makedirs(category_dir, exist_ok=True)
         
-        chunks = glob.glob(os.path.join(category_dir, "*.mp4"))
+        chunks = sorted(glob.glob(os.path.join(category_dir, "chunk_*.mp4")))
 
         if not chunks:
             self._download_and_slice(folder_name, search_query)
-            chunks = glob.glob(os.path.join(category_dir, "*.mp4"))
+            chunks = sorted(glob.glob(os.path.join(category_dir, "chunk_*.mp4")))
             
         return chunks[0] if chunks else None
     

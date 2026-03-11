@@ -20,6 +20,8 @@ class TelegramApproval:
         self.last_message_id = None
 
     async def send_video_for_approval(self, video_path, strategy):
+        await asyncio.sleep(2)
+        
         strategy_details = (
             f"🎬 <b>AI STRATEGY ANALYSIS</b>\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
@@ -40,20 +42,23 @@ class TelegramApproval:
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
-        print(f"[*] Sending video & strategy to Telegram...")
-        with open(video_path, 'rb') as video:
-            message = await self.bot.send_video(
-                chat_id=TELEGRAM_CHAT_ID,
-                video=video,
-                caption=strategy_details,
-                parse_mode=ParseMode.HTML,
-                reply_markup=reply_markup,
-                write_timeout=300, # WICHTIG: Timeout für das Senden
-                read_timeout=300,  # WICHTIG: Timeout für die Antwort
-                connect_timeout=300
-            )
-        self.last_message_id = message.message_id
-        return message.message_id
+        try:
+            print(f"[*] Sending video & strategy to Telegram...")
+            with open(video_path, 'rb') as video:
+                message = await self.bot.send_video(
+                    chat_id=TELEGRAM_CHAT_ID,
+                    video=video,
+                    caption=strategy_details,
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=reply_markup,
+                    write_timeout=300, # WICHTIG: Timeout für das Senden
+                    read_timeout=300,  # WICHTIG: Timeout für die Antwort
+                    connect_timeout=300
+                )
+            self.last_message_id = message.message_id
+            return message.message_id
+        except Exception as e:
+            print(f"[!] Telegram Upload Error: {e}")
     
     async def _handle_callback(self, update, context):
         query = update.callback_query
@@ -62,16 +67,18 @@ class TelegramApproval:
         self.decision = query.data
         print(f"[*] Telegram response received: {self.decision}")
         
-        # Status text in HTML
-        status_text = "<b>✅ Upload Confirmed!</b>" if self.decision == "approve" else "<b>❌ Upload Aborted!</b>"
-        
         try:
             # Buttons entfernen
             await query.edit_message_reply_markup(reply_markup=None)
+
+            if self.decision == "approve":
+                new_status = "<b>✅ STATUS: Approved & Uploading...</b>"
+            else:
+                new_status = "<b>❌ STATUS: Aborted by User.</b>"
             
-            # Caption aktualisieren (HTML nutzen!)
+            updated_caption = f"{query.message.caption_html}\n\n{new_status}"
             await query.edit_message_caption(
-                caption=f"{query.message.caption_html}\n\nStatus: {status_text}", 
+                caption=updated_caption, 
                 parse_mode=ParseMode.HTML
             )
         except Exception as e:

@@ -21,7 +21,10 @@ class StoryAnalyzer(OllamaProvider):
         prompt = f"""
         Analyze this story and decide:
         1. Which voice fits best? (Choices: {self.available_voices})
-        2. What background gameplay would fit? (e.g., Minecraft, GTA, League of Legends, etc.)
+        2. What background gameplay or nature footage would fit? 
+            CRITICAL: The search_query must include keywords like "no commentary", "cinematic", "no facecam", "no hud".
+            Example for nature: "4k cinematic drone footage forest no people"
+            Example for gameplay: "minecraft parkour no commentary 4k"
         3. Which hook style fits best to make this story viral? (e.g., Shocking, Mysterious, Emotional, etc.)
         4. Create a viral CAPTION, a DESCRIPTION, and relevant HASHTAGS.
         
