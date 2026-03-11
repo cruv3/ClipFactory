@@ -35,7 +35,7 @@ class VideoUploader:
         if ig_url: self._log_video_to_history(ig_url, strategy)
         
         # TikTok
-        tk_url = await asyncio.to_thread(self._upload_to_tiktok, video_path, caption)
+        tk_url = await self._upload_to_tiktok(video_path, caption)
         if tk_url: self._log_video_to_history(tk_url, strategy)
         
         # YouTube
@@ -113,30 +113,26 @@ class VideoUploader:
             print(f"[!] Instagram upload failed: {e}")
             return None
 
-    def _upload_to_tiktok(self, video_path, caption):
-        print(f"\n[*] Starting TikTok upload for: {video_path}")
-        
-        if not os.path.exists(TIKTOK_COOKIES):
-            print("[!] TikTok cookies file not found! Skipping TikTok upload.")
-            return None
-            
+    def _upload_to_tiktok_sync(self, video_path, caption):
+        return upload_video(
+            filename=video_path,
+            description=caption,
+            cookies=TIKTOK_COOKIES,
+            headless=True
+        )
+    
+    async def _upload_to_tiktok(self, video_path, caption):
+        """Diese Funktion wird von außen aufgerufen und löst den Asyncio-Fehler."""
+        print(f"\n[*] Starting TikTok upload (Async-Thread)...")
         try:
-            failed = upload_video(
-                filename=video_path,
-                description=caption,
-                cookies=TIKTOK_COOKIES,
-                headless=True # Set to False if you want to watch it happen!
-            )
+            failed = await asyncio.to_thread(self._upload_to_tiktok_sync, video_path, caption)
             
             if not failed:
-                print("[+] TikTok upload successful!")
+                print("[+] TikTok upload erfolgreich!")
                 return f"https://www.tiktok.com/@{TIKTOK_USERNAME}"
-            else:
-                print("[!] TikTok upload failed.")
-                return None
-                
+            return None
         except Exception as e:
-            print(f"[!] TikTok upload threw an error: {e}")
+            print(f"[!] TikTok Fehler: {e}")
             return None
 
     def _upload_to_youtube(self, video_path, title, description, tags):

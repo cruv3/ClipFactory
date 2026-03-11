@@ -105,7 +105,7 @@ async def main_loop():
             
             if is_approved:
                 print(f"[*] Uploading to Social Media...")
-                uploader.distribute_video(video_path, strategy)
+                await uploader.distribute_video(video_path, strategy)
                 print(f"[✅] Video successfully distributed!")
                 print(f"\n[*] Cycle finished. Next video in {VIDEO_INTERVAL_HOURS}h...")
                 await asyncio.sleep(VIDEO_INTERVAL_HOURS * 3600)
