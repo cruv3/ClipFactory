@@ -58,29 +58,41 @@ class VideoEngine:
                 logger=None
             )
 
-            try:
-                if hasattr(final_video, 'audio') and final_video.audio:
-                    final_video.audio.close()
-                final_video.close()
-            except Exception: pass
-            
-            try:
-                audio_clip.close()
-            except Exception: pass
-            
-            try:
-                video_clip.close()
-            except Exception: pass
-
         except Exception as e:
                     print(f"[!] Rendering Error: {e}")
                     return False
-        
-        time.sleep(1)
+        finally:
+            print("[*] Cleaning up resources...")
+            try:
+                if 'final_video' in locals():
+                    if hasattr(final_video, 'audio') and final_video.audio:
+                        final_video.audio.close()
+                    final_video.close()
+            except Exception: pass
+            
+            try:
+                if 'audio_clip' in locals(): audio_clip.close()
+            except Exception: pass
+            
+            try:
+                if 'video_clip' in locals(): video_clip.close()
+            except Exception: pass
+
+            try:
+                if 'text_overlays' in locals():
+                    for txt in text_overlays:
+                        txt.close()
+            except Exception: pass
+
+        time.sleep(2)
         # Benutzten Chunk löschen
         if not TEST_RUN:
-            if os.path.exists(bg_video_path): os.remove(bg_video_path)
-            print(f"[+] Used chunk deleted. Video saved at: {output_path}\n")
+            if os.path.exists(bg_video_path):
+                try:
+                    os.remove(bg_video_path)
+                    print(f"[+] Used chunk deleted. Video saved at: {output_path}\n")
+                except OSError as e:
+                    print(f"[!] Could not delete chunk immediately (Errno 9 possible). OS holds lock. Error: {e}")
         return True
 
     def _create_text_clips(self, word_data):
