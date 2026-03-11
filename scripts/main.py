@@ -8,12 +8,13 @@ from voice_engine import VoiceEngine
 from video_engine import VideoEngine
 from video_uploader import VideoUploader
 from telegram_bot import TelegramApproval
+from stat_reporter import StatReporter
 from utils import clean_data_folder
 
 from config import (
     TELEGRAM_CHAT_ID, 
     VIDEO_INTERVAL_HOURS, CLEAN_INTERVAL_HOURS,
-    DATA_DIR, TEST_RUN
+    DATA_DIR, TEST_RUN, REPORT_INTERVAL_HOURS
 )
 
 async def main_loop():
@@ -24,6 +25,7 @@ async def main_loop():
     video_eng = VideoEngine()
     uploader = VideoUploader()
     tg_bot = TelegramApproval()
+    reporter = StatReporter()
 
     print("\n" + "="*40)
     print("🚀 VIRAL VIDEO FACTORY STARTED")
@@ -32,6 +34,7 @@ async def main_loop():
     print("="*40 + "\n")
 
     last_clean_time = time.time()
+    last_report_time = time.time()
 
     while True:
         if not rewriter.model_verified or not analyzer.model_verified or not voice_eng.model_verified:
@@ -48,6 +51,12 @@ async def main_loop():
                 print(f"[*] Starting Periodic Cleanup in {DATA_DIR}...")
                 clean_data_folder()
                 last_clean_time = time.time()
+
+            # Periodic Stat Report
+            if (current_time - last_report_time) / 3600 >= REPORT_INTERVAL_HOURS:
+                print("[*] Analyzing periodic stat report...")
+                await reporter.let_ai_analyze()
+                last_report_time = time.time()
 
             # 2. Scraping
             raw_story = scraper.get_top_story()

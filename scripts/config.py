@@ -35,6 +35,7 @@ KOKORO_URL_WEB = KOKORO_URL.replace("/v1/audio/speech", "/web/")
 # Intervals
 VIDEO_INTERVAL_HOURS = int(os.getenv("VIDEO_INTERVAL", 6))
 CLEAN_INTERVAL_HOURS = int(os.getenv("CLEANUP_INTERVAL", 48))
+REPORT_INTERVAL_HOURS = int(os.getenv("REPORT_INTERVAL_HOURS", 168))
 
 # Instagram
 IG_USERNAME = os.getenv("IG_USERNAME")

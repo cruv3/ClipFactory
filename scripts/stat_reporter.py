@@ -15,40 +15,9 @@ class StatReporter(OllamaProvider):
         super().__init__()
         self._ensure_history_file()
 
-    def fetch_current_stats(self):
-        print("\n[*] Starting stealth scrape of video statistics...")
-        
-        with open(VIDEO_HISTORY_JSON, "r", encoding="utf-8") as f:
-            history = json.load(f)
-
-        if not history:
-            print("[!] No videos found in history.")
-            return []
-
-        for video in history:
-            url = video.get('url')
-            if not url:
-                continue
-                
-            print(f"[*] Checking stats for: {url}")
-            stats = self._get_stats_via_ytdlp(url)
-            
-            # Update the entries
-            video['views'] = stats['views']
-            video['likes'] = stats['likes']
-            video['comments'] = stats['comments']
-            
-            time.sleep(3) 
-
-        # Save updated data
-        with open(VIDEO_HISTORY_JSON, "w", encoding="utf-8") as f:
-            json.dump(history, f, indent=4)
-            
-        print("[+] All statistics updated successfully!")
-        return history
-
-    def let_ai_analyze(self, history_data):
+    def let_ai_analyze(self):
         print("\n[*] Preparing data for AI analysis...")
+        history_data = self._fetch_current_stats()
         
         if not history_data:
             print("[!] No history data to analyze.")
@@ -102,28 +71,37 @@ class StatReporter(OllamaProvider):
         except Exception as e:
             print(f"[!] An error occurred during AI analysis: {e}")
 
-    def log_published_video(self, platform, url, strategy):
-            with open(VIDEO_HISTORY_JSON, "r", encoding="utf-8") as f:
-                history = json.load(f)
+    def _fetch_current_stats(self):
+        print("\n[*] Starting stealth scrape of video statistics...")
+        
+        with open(VIDEO_HISTORY_JSON, "r", encoding="utf-8") as f:
+            history = json.load(f)
 
-            new_entry = {
-                "platform": platform,
-                "url": url,
-                "date_posted": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "subreddit": strategy.folder_name,
-                "voice": strategy.voice,
-                "hook_style": strategy.hook_style,
-                "views": 0,
-                "likes": 0,
-                "comments": 0
-            }
-            
-            history.append(new_entry)
-            
-            with open(VIDEO_HISTORY_JSON, "w", encoding="utf-8") as f:
-                json.dump(history, f, indent=4)
+        if not history:
+            print("[!] No videos found in history.")
+            return []
+
+        for video in history:
+            url = video.get('url')
+            if not url:
+                continue
                 
-            print(f"[+] Saved {platform} link to history: {url}")
+            print(f"[*] Checking stats for: {url}")
+            stats = self._get_stats_via_ytdlp(url)
+            
+            # Update the entries
+            video['views'] = stats['views']
+            video['likes'] = stats['likes']
+            video['comments'] = stats['comments']
+            
+            time.sleep(3) 
+
+        # Save updated data
+        with open(VIDEO_HISTORY_JSON, "w", encoding="utf-8") as f:
+            json.dump(history, f, indent=4)
+            
+        print("[+] All statistics updated successfully!")
+        return history
 
     def _ensure_history_file(self):
         if not os.path.exists(VIDEO_HISTORY_JSON):
@@ -152,26 +130,3 @@ class StatReporter(OllamaProvider):
         except Exception as e:
             print(f"[!] Error scraping {url}: {e}")
             return {"views": 0, "likes": 0, "comments": 0}
-
-
-# --- TEST RUN ---
-if __name__ == "__main__":
-    reporter = StatReporter()
-    
-    test_url = "https://www.youtube.com/watch?v=ZjEPSQBsU08"
-    
-    reporter.ensure_history_file()
-    with open(reporter.history_file, "w", encoding="utf-8") as f:
-        json.dump([{
-            "video_id": "test_001",
-            "url": test_url,
-            "subreddit": "AmItheAsshole",
-            "voice": "am_onyx",
-            "hook_style": "Shocking",
-            "views": 0,
-            "likes": 0
-        }], f, indent=4)
-        
-    history = reporter.fetch_current_stats()
-    
-    reporter.let_ai_analyze(history)

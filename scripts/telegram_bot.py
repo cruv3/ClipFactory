@@ -47,7 +47,7 @@ class TelegramApproval:
             print(f"[*] Sending video & strategy to Telegram...")
             message = await self.bot.send_video(
                 chat_id=TELEGRAM_CHAT_ID,
-                video=Path(video_path),
+                video=str(Path(video_path).absolute()),
                 caption=strategy_details,
                 parse_mode=ParseMode.HTML,
                 reply_markup=reply_markup,

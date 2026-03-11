@@ -2,7 +2,7 @@ import os
 import shutil
 from datetime import datetime
 
-from config import DATA_DIR, VIDEO_CHUNKS_DIR, STRATEGY_LOG
+from config import DATA_DIR, VIDEO_CHUNKS_DIR, STRATEGY_LOG, VIDEO_HISTORY_JSON
 
 from dataclasses import dataclass
 @dataclass
@@ -24,7 +24,7 @@ def clean_data_folder():
         return
 
     # Diese Sachen lassen wir Finger weg!
-    keep_list = [os.path.basename(VIDEO_CHUNKS_DIR), os.path.basename(STRATEGY_LOG)]
+    keep_list = [os.path.basename(VIDEO_CHUNKS_DIR), os.path.basename(STRATEGY_LOG), os.path.basename(VIDEO_HISTORY_JSON)]
 
     for item in os.listdir(DATA_DIR):
         item_path = os.path.join(DATA_DIR, item)
