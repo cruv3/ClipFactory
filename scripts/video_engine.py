@@ -27,7 +27,7 @@ class VideoEngine:
         bg_video_path = self._get_available_chunk(strategy.folder_name, strategy.search_query)
         if not bg_video_path:
             print("[!] No background video available.")
-            return False
+            return None
 
         print(f"[*] Using background chunk: {bg_video_path}")
         
@@ -93,8 +93,15 @@ class VideoEngine:
                 except OSError as e:
                     print(f"[!] Could not delete chunk immediately (Errno 9 possible). OS holds lock. Error: {e}")
         
-        shutil.rmtree(os.path.dirname(audio_path))
-        return True
+        temp_run_dir = os.path.dirname(audio_path)
+        if os.path.exists(temp_run_dir) and "__" in temp_run_dir:
+            try:
+                shutil.rmtree(temp_run_dir)
+                print(f"[+] Run folder cleaned up: {temp_run_dir}")
+            except Exception as e:
+                print(f"[!] Could not cleanup run folder: {e}")
+
+        return output_path
 
     def _create_text_clips(self, word_data):
         text_clips = []
