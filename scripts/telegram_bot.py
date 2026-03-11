@@ -4,7 +4,6 @@ from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import Application, CallbackQueryHandler
 from telegram.request import HTTPXRequest
-from pathlib import Path
 
 from utils import StoryStrategy
 from config import (
@@ -45,18 +44,19 @@ class TelegramApproval:
 
         try:
             print(f"[*] Sending video & strategy to Telegram...")
-            message = await self.bot.send_video(
-                chat_id=TELEGRAM_CHAT_ID,
-                video=str(Path(video_path).absolute()),
-                caption=strategy_details,
-                parse_mode=ParseMode.HTML,
-                reply_markup=reply_markup,
-                write_timeout=300, 
-                read_timeout=300,  
-                connect_timeout=300
-            )
-            self.last_message_id = message.message_id
-            return message.message_id
+            with open(video_path, 'rb') as video_file:
+                message = await self.bot.send_video(
+                    chat_id=TELEGRAM_CHAT_ID,
+                    video=video_file, # Hier das Datei-Objekt übergeben
+                    caption=strategy_details,
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=reply_markup,
+                    write_timeout=600, # Mehr Zeit für große Videos
+                    read_timeout=600,
+                    connect_timeout=600
+                )
+                self.last_message_id = message.message_id
+                return message.message_id
         except Exception as e:
             print(f"[!] Telegram Upload Error: {e}")
     
@@ -64,25 +64,23 @@ class TelegramApproval:
         query = update.callback_query
         await query.answer()
         
-        self.decision = query.data
+        self.decision = query.data # "approve" oder "abort"
         print(f"[*] Telegram response received: {self.decision}")
-        
-        try:
-            # Buttons entfernen
-            await query.edit_message_reply_markup(reply_markup=None)
 
-            if self.decision == "approve":
-                new_status = "<b>✅ STATUS: Approved & Uploading...</b>"
-            else:
-                new_status = "<b>❌ STATUS: Aborted by User.</b>"
-            
-            updated_caption = f"{query.message.caption_html}\n\n{new_status}"
-            await query.edit_message_caption(
-                caption=updated_caption, 
-                parse_mode=ParseMode.HTML
-            )
-        except Exception as e:
-            print(f"[!] Error updating caption: {e}")
+        # Status-Text basierend auf Klick festlegen
+        if self.decision == "approve":
+            status = "<b>✅ STATUS: Approved & Uploading...</b>"
+        else:
+            status = "<b>❌ STATUS: Aborted by User.</b>"
+
+        # UI Update direkt über den Callback-Context
+        await self._update_message_status(
+            context.bot, 
+            query.message.chat_id, 
+            query.message.message_id, 
+            status,
+            ""
+        )
         
         self.event.set()
 
@@ -103,27 +101,39 @@ class TelegramApproval:
             self.decision = "approve"
             
             if self.last_message_id:
-                try:
-                    await self.bot.edit_message_reply_markup(
-                        chat_id=TELEGRAM_CHAT_ID, 
-                        message_id=self.last_message_id, 
-                        reply_markup=None
-                    )
-                    await self.bot.edit_message_caption(
-                        chat_id=TELEGRAM_CHAT_ID,
-                        message_id=self.last_message_id,
-                        caption=f"✅ **AUTO-APPROVED (Timeout)**\n\nStarting upload now...",
-                        parse_mode=ParseMode.MARKDOWN
-                    )
-                except Exception as e:
-                    print(f"[!] Could not update Telegram UI: {e}")
+                await self._update_message_status(
+                    self.bot,
+                    TELEGRAM_CHAT_ID,
+                    self.last_message_id,
+                    "<b>⏳ STATUS: Auto-Approved (Timeout)</b>",
+                    ""
+                )
 
-        # Stop bot properly
+        # Bot sauber stoppen
         await application.updater.stop()
         await application.stop()
         await application.shutdown()
 
         return self.decision == "approve"
+    
+    async def _update_message_status(self, bot, chat_id, message_id, status_text, original_caption):
+        try:
+            # 1. Buttons entfernen
+            await bot.edit_message_reply_markup(
+                chat_id=chat_id,
+                message_id=message_id,
+                reply_markup=None
+            )
+            # 2. Status an die Caption hängen
+            new_caption = f"{original_caption}\n\n{status_text}"
+            await bot.edit_message_caption(
+                chat_id=chat_id,
+                message_id=message_id,
+                caption=new_caption,
+                parse_mode=ParseMode.HTML
+            )
+        except Exception as e:
+            print(f"[!] Error updating Telegram UI: {e}")
         
 if __name__ == "__main__":
     mock_strat = StoryStrategy(
@@ -149,6 +159,6 @@ if __name__ == "__main__":
         await tg.send_video_for_approval(test_video, mock_strat)
         print("[+] Video und Strategie wurden gesendet!")
         
-        await tg.wait_for_approval(timeout=30)
+        await tg.wait_for_approval(timeout=5)
 
     asyncio.run(test())
