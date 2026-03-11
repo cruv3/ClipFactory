@@ -8,6 +8,7 @@ from moviepy.editor import VideoFileClip, AudioFileClip, TextClip, CompositeVide
 import moviepy.video.fx.all as vfx
 from PIL import Image, ImageDraw
 import numpy as np
+import time
 
 from config import (
     VIDEO_CHUNKS_DIR, TEST_RUN
@@ -31,33 +32,43 @@ class VideoEngine:
 
         print(f"[*] Using background chunk: {bg_video_path}")
         
-        audio_clip = AudioFileClip(audio_path)
-        video_clip = VideoFileClip(bg_video_path)
-        
-        # Video auf Audiolänge kürzen
-        video_clip = video_clip.subclip(0, audio_clip.duration)
-        (w, h) = video_clip.size
-        target_width = int((h * (9 / 16)) // 2) * 2
-        video_clip = vfx.crop(video_clip, width=target_width, height=h, x_center=w/2, y_center=h/2)
+        try:      
+            audio_clip = AudioFileClip(audio_path)
+            video_clip = VideoFileClip(bg_video_path)
+            
+            # Video auf Audiolänge kürzen
+            video_clip = video_clip.subclip(0, audio_clip.duration)
+            (w, h) = video_clip.size
+            target_width = int((h * (9 / 16)) // 2) * 2
+            video_clip = vfx.crop(video_clip, width=target_width, height=h, x_center=w/2, y_center=h/2)
 
-        text_overlays = self._create_text_clips(word_timestamps)
-        final_video = CompositeVideoClip([video_clip] + text_overlays).set_audio(audio_clip)
-        
-        output_path = os.path.join(strategy.output_dir, f"{strategy.folder_name}.mp4")
+            text_overlays = self._create_text_clips(word_timestamps)
+            final_video = CompositeVideoClip([video_clip] + text_overlays).set_audio(audio_clip)
+            
+            output_path = os.path.join(strategy.output_dir, f"{strategy.folder_name}.mp4")
 
-        print("[*] Rendering Video...")
-        final_video.write_videofile(
-            output_path, 
-            codec="libx264", 
-            audio_codec="aac", 
-            fps=30, 
-            preset="fast", 
-            ffmpeg_params=["-pix_fmt", "yuv420p"],
-            logger=None
-        )
+            print("[*] Rendering Video...")
+            final_video.write_videofile(
+                output_path, 
+                codec="libx264", 
+                audio_codec="aac", 
+                fps=30, 
+                preset="fast", 
+                ffmpeg_params=["-pix_fmt", "yuv420p"],
+                logger=None
+            )
 
-        audio_clip.close()
-        video_clip.close()
+            final_video.close()
+            audio_clip.close()
+            video_clip.close()
+
+            if hasattr(final_video, 'audio') and final_video.audio:
+                            final_video.audio.close()
+        except Exception as e:
+                    print(f"[!] Rendering Error: {e}")
+                    if 'video_clip' in locals(): video_clip.close()
+                    if 'audio_clip' in locals(): audio_clip.close()
+                    return False
         
         # Benutzten Chunk löschen
         if not TEST_RUN:
@@ -128,6 +139,7 @@ class VideoEngine:
         
         try:
             subprocess.run(ffmpeg_command, check=True, shell=True)
+            time.sleep(1)
             if os.path.exists(temp_video):
                 os.remove(temp_video)
         except subprocess.CalledProcessError as e:
