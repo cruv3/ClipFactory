@@ -58,18 +58,25 @@ class VideoEngine:
                 logger=None
             )
 
-            final_video.close()
-            audio_clip.close()
-            video_clip.close()
+            try:
+                if hasattr(final_video, 'audio') and final_video.audio:
+                    final_video.audio.close()
+                final_video.close()
+            except Exception: pass
+            
+            try:
+                audio_clip.close()
+            except Exception: pass
+            
+            try:
+                video_clip.close()
+            except Exception: pass
 
-            if hasattr(final_video, 'audio') and final_video.audio:
-                            final_video.audio.close()
         except Exception as e:
                     print(f"[!] Rendering Error: {e}")
-                    if 'video_clip' in locals(): video_clip.close()
-                    if 'audio_clip' in locals(): audio_clip.close()
                     return False
         
+        time.sleep(1)
         # Benutzten Chunk löschen
         if not TEST_RUN:
             if os.path.exists(bg_video_path): os.remove(bg_video_path)

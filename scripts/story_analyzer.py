@@ -22,7 +22,7 @@ class StoryAnalyzer(OllamaProvider):
         Analyze this story and decide:
         1. Which voice fits best? (Choices: {self.available_voices})
         2. What background gameplay or nature footage would fit? 
-            CRITICAL: The search_query must include keywords like "no commentary", "cinematic", "no facecam", "no hud".
+            CRITICAL: The search_query must include keywords like "no commentary", "cinematic", "no facecam", "no hud", "brainrot".
             Example for nature: "4k cinematic drone footage forest no people"
             Example for gameplay: "minecraft parkour no commentary 4k"
         3. Which hook style fits best to make this story viral? (e.g., Shocking, Mysterious, Emotional, etc.)
