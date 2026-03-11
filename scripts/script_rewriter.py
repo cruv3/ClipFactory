@@ -35,6 +35,10 @@ class ScriptRewriter(OllamaProvider):
         4. THE FINAL BLOW (60-90s): A shocking conclusion or a haunting cliffhanger. This MUST feel like a complete story arc.
 
         STRICT STYLE RULES:
+        - Output ONLY the spoken script.
+        - NO intros like "Here is your script" or "Sure, I can help".
+        - NO conversational filler.
+        - Start immediately with the hook.
         - Use "I" (first-person perspective).
         - Use punchy, dramatic sentences.
         - ZERO filler, ZERO intros. Start with the hook immediately.
