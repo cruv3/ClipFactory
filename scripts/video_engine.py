@@ -8,6 +8,10 @@ from moviepy.editor import VideoFileClip, AudioFileClip, TextClip, CompositeVide
 import moviepy.video.fx.all as vfx
 import time
 
+import PIL.Image
+if not hasattr(PIL.Image, 'ANTIALIAS'):
+    PIL.Image.ANTIALIAS = PIL.Image.LANCZOS
+
 from config import (
     VIDEO_CHUNKS_DIR, TEST_RUN
 )
@@ -40,7 +44,7 @@ class VideoEngine:
             target_width = int((h * (9 / 16)) // 2) * 2
             video_clip = vfx.crop(video_clip, width=target_width, height=h, x_center=w/2, y_center=h/2)
 
-            text_overlays = self._create_text_clips(word_timestamps)
+            text_overlays = self._create_text_clips(word_timestamps, target_width)
             final_video = CompositeVideoClip([video_clip] + text_overlays).set_audio(audio_clip)
             
             output_path = os.path.join(strategy.output_dir, f"{strategy.folder_name}.mp4")
@@ -94,8 +98,10 @@ class VideoEngine:
         
         return output_path
 
-    def _create_text_clips(self, word_data):
+    def _create_text_clips(self, word_data, video_width): # video_width hinzugefügt
         text_clips = []
+        # Sicherheitsmarge: Text soll maximal 85% der Bildschirmbreite füllen
+        max_allowed_width = int(video_width * 0.85)
         
         for data in word_data:
             word = data["word"]
@@ -103,15 +109,23 @@ class VideoEngine:
             dur = data["end"] - data["start"]
             if dur <= 0: dur = 0.1
 
+            # 1. Clip normal erstellen
             txt_clip = TextClip(
                 txt=word,
-                fontsize=90,       # Etwas größer, da die Box fehlt
-                color='white',    # Gelb knallt auf Minecraft-Hintergrund oft am besten
-                font='Arial-Bold', # Achte darauf, dass die Schriftart installiert ist
-                stroke_color='black', # Ein schwarzer Umriss macht den Text ohne Box lesbar
-                stroke_width=3,
+                fontsize=90,
+                color='white',
+                font='Georgia',
+                stroke_color='black',
+                stroke_width=2,
                 method='label'
             ).set_start(start_t).set_duration(dur).set_position('center')
+
+            # 2. Prüfen: Ist das Wort zu breit für den Screen?
+            if txt_clip.w > max_allowed_width:
+                # Clip proportional verkleinern, damit er in die Schranken passt
+                txt_clip = txt_clip.resize(width=max_allowed_width)
+                # Nach dem Resizen wieder zentrieren (wichtig!)
+                txt_clip = txt_clip.set_position('center')
 
             text_clips.append(txt_clip)
         
@@ -135,7 +149,7 @@ class VideoEngine:
             'noplaylist': True,
             'retries': 10,
             'fragment_retries': 10,
-            'match_filter': yt_dlp.utils.match_filter_func("duration > 600"),
+            'match_filter': yt_dlp.utils.match_filter_func("duration > 600 & height >= 1080"),
         }
         
         try:
@@ -219,7 +233,7 @@ if __name__ == "__main__":
         {"word": "TEST", "start": 1.0, "end": 1.5},
         {"word": "OF", "start": 1.5, "end": 1.8},
         {"word": "THE", "start": 1.8, "end": 2.0},
-        {"word": "FACTORY", "start": 2.0, "end": 2.8},
+        {"word": "FACTORYRESETTTING", "start": 2.0, "end": 2.8},
     ]
 
     # Pfad zu einer Test-Audio (Du musst eine kurze .wav oder .mp3 in data/test_audio.mp3 legen)
@@ -229,10 +243,6 @@ if __name__ == "__main__":
         print(f"[!] TEST ABORTED: Please place a file at {test_audio}")
     else:
         engine = VideoEngine()
-        
-        # Hier kannst du die Flags zum Testen SCHNELL ändern:
-        engine.FLAGS["USE_TEXT_BOX_BG"] = True
-        engine.FLAGS["USE_TEXT_SHADOW"] = True
         
         success = engine.create_video(
             word_timestamps=mock_word_timestamps,
