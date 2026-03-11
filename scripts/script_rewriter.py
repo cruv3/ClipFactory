@@ -28,9 +28,9 @@ class ScriptRewriter(OllamaProvider):
         
         CRITICAL RULES:
         1. Hook Style: {hook_style}. The first sentence must be an extreme hook.
-        2. EXPAND THE STORY: Add creepy details, build tension, describe what you see, hear, and feel.
-        3. Use very short, punchy sentences.
-        4. ZERO CHATBOT FILLER. NO "Here is your script" or intro/outro. 
+        2. EXPAND THE STORY: Amplify the core emotion of the premise. If it's scary, add creepy details. If it's family drama, emphasize the anger and betrayal. Describe what the narrator sees, hears, and feels to make it immersive.
+        3. Use very short, punchy sentences. (TikTok style)
+        4. ZERO CHATBOT FILLER. NO "Here is your script" or intro/outro. Just the raw spoken text.
         
         {strategy_injection}
 

@@ -138,8 +138,25 @@ class VideoEngine:
             'match_filter': yt_dlp.utils.match_filter_func("duration > 600"),
         }
         
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.extract_info(f"ytsearch1:{full_query}", download=True)
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.extract_info(f"ytsearch1:{full_query}", download=True)
+        except Exception as e:
+            print(f"[!] yt-dlp Error during search: {e}")
+
+        if not os.path.exists(temp_video):
+            print(f"[!] WARNING: Download failed for '{full_query}'. Trying safe fallback...")
+            fallback_query = "minecraft parkour gameplay no commentary 4k -shorts"
+            
+            try:
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    ydl.extract_info(f"ytsearch1:{fallback_query}", download=True)
+            except Exception:
+                pass
+
+            if not os.path.exists(temp_video):
+                print("[!] CRITICAL: Even fallback download failed.")
+                return False
             
         print(f"[+] Download complete. Slicing into 90s chunks...")
         
