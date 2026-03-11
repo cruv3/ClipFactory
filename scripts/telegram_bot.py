@@ -4,6 +4,7 @@ from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import Application, CallbackQueryHandler
 from telegram.request import HTTPXRequest
+from pathlib import Path
 
 from utils import StoryStrategy
 from config import (
@@ -46,7 +47,7 @@ class TelegramApproval:
             print(f"[*] Sending video & strategy to Telegram...")
             message = await self.bot.send_video(
                 chat_id=TELEGRAM_CHAT_ID,
-                video=video_path,
+                video=Path(video_path),
                 caption=strategy_details,
                 parse_mode=ParseMode.HTML,
                 reply_markup=reply_markup,
@@ -138,7 +139,7 @@ if __name__ == "__main__":
     )
 
     async def test():
-        tg = TelegramApproval(TELEGRAM_TOKEN, TELEGRAM_CHAT_ID)
+        tg = TelegramApproval()
         test_video = "data/test/test_story.mp4" # Pfad prüfen!
         
         if not os.path.exists(test_video):

@@ -2,6 +2,11 @@ import requests
 import os
 import whisper
 import time
+import warnings
+
+warnings.filterwarnings("ignore", category=UserWarning)
+os.environ["TQDM_DISABLE"] = "1"
+os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
 
 from config import KOKORO_URL, KOKORO_URL_WEB
 
@@ -78,13 +83,20 @@ if __name__ == "__main__":
 
     while not engine.model_verified:
         time.sleep(10)
-        engine.verify_kokoro()
+        engine.model_verified = engine.verify_kokoro()
         
-    
     test_text = "The shadows in my room don't match the furniture anymore. One of them just stood up."
     
-    # Test mit einer fiktiven Story-ID
-    path = engine.generate_audio(test_text, story_id="test_run_001", voice="am_onyx")
+    class MockStrategy:
+        voice: str
+        output_dir: str
+        
+    test_strategy = MockStrategy(
+        voice="am_onyx",
+        output_dir="data/test_run_001"
+    )
+    
+    path = engine.generate_audio(test_text, strategy=test_strategy)
     
     if path:
         print(f"🎉 Voice Test successful! File at: {path}")

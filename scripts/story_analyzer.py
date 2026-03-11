@@ -91,12 +91,11 @@ class StoryAnalyzer(OllamaProvider):
                 end = raw_content.rfind('}') + 1
                 parsed_json = json.loads(raw_content[start:end])
 
-            # Jetzt Mapping auf die Dataclass (Punkt-Notation statt Keys)
             category = parsed_json.get("folder_name", "stories")
             unique_id = f"{category}_{generate_story_id()}"
             final_path = os.path.join(DATA_DIR, category, unique_id)
 
-            return StoryStrategy(
+            strategy = StoryStrategy(
                 voice=parsed_json.get("voice", "am_onyx"),
                 hook_style=parsed_json.get("hook_style", "Shocking"),
                 folder_name=parsed_json.get("folder_name", "stories"),
@@ -107,6 +106,15 @@ class StoryAnalyzer(OllamaProvider):
                 description=parsed_json.get("description", "A crazy story that will leave you speechless. #reddit #shorts"),
                 tags=parsed_json.get("tags", "#reddit #storytime #fyp")
             )
+
+            print("\n" + "="*40)
+            print("🚀 GENERATED STORY STRATEGY:")
+            print("="*40)
+            for key, value in strategy.__dict__.items():
+                print(f"{key.upper():<15}: {value}")
+            print("="*40 + "\n")
+
+            return strategy
             
         except requests.exceptions.ConnectionError:
             print("[!] ERROR: Could not connect to Ollama.")
