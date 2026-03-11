@@ -44,17 +44,16 @@ class TelegramApproval:
 
         try:
             print(f"[*] Sending video & strategy to Telegram...")
-            with open(video_path, 'rb') as video:
-                message = await self.bot.send_video(
-                    chat_id=TELEGRAM_CHAT_ID,
-                    video=video,
-                    caption=strategy_details,
-                    parse_mode=ParseMode.HTML,
-                    reply_markup=reply_markup,
-                    write_timeout=300, # WICHTIG: Timeout für das Senden
-                    read_timeout=300,  # WICHTIG: Timeout für die Antwort
-                    connect_timeout=300
-                )
+            message = await self.bot.send_video(
+                chat_id=TELEGRAM_CHAT_ID,
+                video=video_path,
+                caption=strategy_details,
+                parse_mode=ParseMode.HTML,
+                reply_markup=reply_markup,
+                write_timeout=300, 
+                read_timeout=300,  
+                connect_timeout=300
+            )
             self.last_message_id = message.message_id
             return message.message_id
         except Exception as e:
