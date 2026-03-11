@@ -40,6 +40,7 @@ REPORT_INTERVAL_HOURS = int(os.getenv("REPORT_INTERVAL_HOURS", 168))
 # Instagram
 IG_USERNAME = os.getenv("IG_USERNAME")
 IG_PASSWORD = os.getenv("IG_PASSWORD")
+IG_SETTINGS_FILE = os.path.join(SECRETS_DIR, "ig_settings.json")
 
 # TikTok
 TIKTOK_USERNAME = os.getenv("TIKTOK_USERNAME")

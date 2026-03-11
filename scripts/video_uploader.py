@@ -3,6 +3,7 @@ import time
 import pickle
 import json
 import shutil
+import asyncio
 
 from instagrapi import Client
 from tiktok_uploader.upload import upload_video
@@ -15,11 +16,11 @@ from googleapiclient.http import MediaFileUpload
 from config import (
     IG_USERNAME, IG_PASSWORD, 
     TIKTOK_COOKIES, TIKTOK_USERNAME,
-    YOUTUBE_CLIENT_SECRETS, YOUTUBE_TOKEN_PICKLE, YOUTUBE_SCOPES, VIDEO_HISTORY_JSON
+    YOUTUBE_CLIENT_SECRETS, YOUTUBE_TOKEN_PICKLE, YOUTUBE_SCOPES, VIDEO_HISTORY_JSON, IG_SETTINGS_FILE
 )
 
 class VideoUploader:
-    def distribute_video(self, video_path, strategy):
+    async def distribute_video(self, video_path, strategy):
         if not os.path.exists(video_path):
             print(f"[!] Cannot upload, file not found: {video_path}")
             return
@@ -34,7 +35,7 @@ class VideoUploader:
         if ig_url: self._log_video_to_history(ig_url, strategy)
         
         # TikTok
-        tk_url = self._upload_to_tiktok(video_path, caption)
+        tk_url = await asyncio.to_thread(self._upload_to_tiktok, video_path, caption)
         if tk_url: self._log_video_to_history(tk_url, strategy)
         
         # YouTube
@@ -90,8 +91,13 @@ class VideoUploader:
         
         try:
             cl = Client()
-            cl.login(IG_USERNAME, IG_PASSWORD)
+
+            if os.path.exists(IG_SETTINGS_FILE):
+                print("[*] Loading Instagram session from file...")
+                cl.load_settings(IG_SETTINGS_FILE)
             
+            cl.login(IG_USERNAME, IG_PASSWORD)
+            cl.dump_settings(IG_SETTINGS_FILE)
             # upload_clip is specifically for Reels
             media = cl.clip_upload(
                 path=video_path,
@@ -229,6 +235,6 @@ if __name__ == "__main__":
     )
     
     uploader = VideoUploader()
-    urls = uploader.distribute_video("data/test/test_story.mp4", mock_strat)
+    #urls = uploader.distribute_video("data/test/test_story.mp4", mock_strat)
+    uploader._upload_to_instagram("test", "test")
     print("\n=== FINAL UPLOAD REPORT ===")
-    print(urls)
