@@ -5,6 +5,7 @@ services:
     container_name: viral_video_factory
     restart: unless-stopped
     volumes:
+      - .:/app
       - ./secrets:/app/secrets
       - ./data:/app/data
       - ./.env:/app/.env
