@@ -15,9 +15,9 @@ for directory in [SECRETS_DIR, DATA_DIR, VIDEO_CHUNKS_DIR]:
         os.makedirs(directory, exist_ok=True)
 
 # Persistent Logs (The "Memory" of your factory)
-STRATEGY_LOG = os.path.join(SECRETS_DIR, "ai_strategy.txt")
-USED_POSTS_LOG = os.path.join(SECRETS_DIR, "used_posts.txt")
-VIDEO_HISTORY_JSON = os.path.join(SECRETS_DIR, "video_history.json")
+USED_POSTS_LOG = os.path.join(DATA_DIR, "used_posts.txt")
+VIDEO_HISTORY_JSON = os.path.join(DATA_DIR, "video_history.json")
+STRATEGY_LOG = os.path.join(DATA_DIR, "ai_strategy.txt")
 
 # Telegram & Ollama & Kokoro
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
