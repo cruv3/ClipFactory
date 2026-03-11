@@ -23,7 +23,8 @@ reports/*.txt
 .DS_Store
 Thumbs.db
 
-data
+data/*
+secrets/*
 
 kokoro_model/*
 ollama_models/*
