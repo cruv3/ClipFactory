@@ -1,6 +1,6 @@
 import os
 import shutil
-import datetime
+from datetime import datetime
 
 from config import DATA_DIR, VIDEO_CHUNKS_DIR
 

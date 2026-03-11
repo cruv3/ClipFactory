@@ -6,7 +6,7 @@ from config import KOKORO_URL
 
 class VoiceEngine:
     def __init__(self):
-        self._verify_kokoro()
+        self.model_verified = self._verify_kokoro()
 
     def generate_audio(self, text, strategy, speed=1.0):
         os.makedirs(strategy.output_dir, exist_ok=True)

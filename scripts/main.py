@@ -1,6 +1,5 @@
 import time
 import asyncio
-import os
 
 from reddit_scraper import RedditScraper
 from script_rewriter import ScriptRewriter
@@ -18,16 +17,13 @@ from config import (
 )
 
 async def main_loop():
-    try:
-        scraper = RedditScraper()
-        rewriter = ScriptRewriter()
-        analyzer = StoryAnalyzer()
-        voice_eng = VoiceEngine()
-        video_eng = VideoEngine()
-        uploader = VideoUploader()
-        tg_bot = TelegramApproval()
-    except ConnectionError:
-        return 
+    scraper = RedditScraper()
+    rewriter = ScriptRewriter()
+    analyzer = StoryAnalyzer()
+    voice_eng = VoiceEngine()
+    video_eng = VideoEngine()
+    uploader = VideoUploader()
+    tg_bot = TelegramApproval()
 
     print("\n" + "="*40)
     print("🚀 VIRAL VIDEO FACTORY STARTED")
@@ -38,6 +34,10 @@ async def main_loop():
     last_clean_time = time.time()
 
     while True:
+        if not rewriter.model_verified or not analyzer.model_verified or not voice_eng.model_verified:
+            time.sleep(30)
+            continue
+
         try:
             # 1. Cleanup Check
             current_time = time.time()
@@ -86,12 +86,15 @@ async def main_loop():
             is_approved = await tg_bot.wait_for_approval(timeout=1800)
 
             # 8. UPLOAD
-            if is_approved and not TEST_RUN:
+            if TEST_RUN:
+                print(f"\n[✅] TEST RUN COMPLETE: Video created at {video_path}")
+                print("[*] Skipping upload and exiting as requested.")
+                return
+            
+            if is_approved:
                 print(f"[*] Uploading to Social Media...")
                 uploader.distribute_video(video_path, strategy)
                 print(f"[✅] Video successfully distributed!")
-            elif TEST_RUN:
-                print(f"Upload canceled since it is a test run.")
             else:
                 print(f"[🛑] Upload aborted by user via Telegram.")
 
@@ -108,7 +111,7 @@ async def main_loop():
                 await tg_bot.bot.send_message(TELEGRAM_CHAT_ID, error_text, parse_mode='HTML')
             except: pass
             print(f"\n[CRITICAL ERROR]: {e}")
-            time.sleep(60)
+            break
 
 if __name__ == "__main__":
     asyncio.run(main_loop())

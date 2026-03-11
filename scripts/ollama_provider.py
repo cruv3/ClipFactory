@@ -3,13 +3,13 @@ from config import OLLAMA_MODEL, OLLAMA_TAGS_URL, OLLAMA_PULL_URL
 
 class OllamaProvider:
     """Basis-Klasse für alle Komponenten, die Ollama benötigen."""
-    _model_verified = False
+    model_verified = False
 
     def __init__(self):
-            if not OllamaProvider._model_verified:
+            if not OllamaProvider.model_verified:
                 if not self._ensure_model_is_available():
                     raise ConnectionError("Ollama is not reachable!")
-                OllamaProvider._model_verified = True
+                OllamaProvider.model_verified = True
 
     def _ensure_model_is_available(self):
         print(f"[*] Checking if Ollama model '{OLLAMA_MODEL}' is installed...")
