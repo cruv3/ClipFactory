@@ -85,6 +85,9 @@ class TelegramApproval:
         self.event.set()
 
     async def wait_for_approval(self, timeout=1800):
+        self.event.clear()
+        self.decision = None
+
         application = Application.builder().token(TELEGRAM_TOKEN).build()
         application.add_handler(CallbackQueryHandler(self._handle_callback))
         

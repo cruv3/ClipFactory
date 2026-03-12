@@ -24,47 +24,38 @@ class StoryAnalyzer(OllamaProvider):
         if os.path.exists(VIDEO_CHUNKS_DIR):
             available_folders = [f for f in os.listdir(VIDEO_CHUNKS_DIR) if os.path.isdir(os.path.join(VIDEO_CHUNKS_DIR, f))]
 
+        safe_themes = ["minecraft_parkour", "gta5_stunts", "satisfying_slime", "nature_drone_4k"]
+
         prompt = f"""
-        Analyze this story and decide:
-        1. Which voice fits best? (Choices: {self.available_voices})
-        
-        2. What background gameplay or nature footage would fit? 
-           Currently available folders: {available_folders}
-           
-           CRITICAL RULES FOR BACKGROUND:
-           - First, check if a suitable theme already exists in the 'Currently available folders' list. If yes, output that EXACT folder name.
-           - If NO existing folder fits the vibe of the story, invent a NEW generic folder name.
-           - NEVER include specific details from the story (like "roommates" or "food").
-           - Keep new categories generic and format them with underscores (e.g., "minecraft_parkour", "gta5_racing", "cinematic_drone_nature").
-           
-        3. Which hook style fits best to make this story viral? (e.g., Shocking, Mysterious, Emotional, etc.)
-        
-        4. Create a viral CAPTION, a DESCRIPTION, and relevant HASHTAGS.
+        Analyze this story and decide the visual and vocal strategy.
         
         STORY: "{story_text}"
+
+        TASK:
+        1. Select a Voice: Choose from {self.available_voices}.
+        
+        2. Background Strategy (CRITICAL):
+           We need high-retention background footage. 
+           Existing folders: {available_folders}
+           
+           RULES:
+           - Use an EXISTING folder if it fits even remotely.
+           - If you create a NEW folder, it MUST be a generic gameplay or nature category.
+           - NEVER include story-specific keywords (like 'daughter', 'struggle', 'behavior') in the 'folder_name' or 'search_query'.
+           - The 'search_query' MUST be for YouTube and should focus on: 'gameplay no commentary', 'parkour 4k', or 'cinematic nature'.
+           - PREFERRED THEMES: Minecraft Parkour, GTA 5 Mega Ramp, CS:GO Surfing, Satisfying Kinetic Sand, Nature Drone.
+           - These are the safe_themes: {safe_themes}
 
         Return ONLY a JSON object:
         {{
             "voice": "selected_voice",
-            "folder_name": "category",
-            "search_query": "youtube search query",
-            "reason": "why this fits",
-            "hook_style": "style",
+            "folder_name": "generic_category_name",
+            "search_query": "generic youtube search query (e.g. 'minecraft parkour no commentary 4k')",
+            "reason": "short explanation",
+            "hook_style": "Shocking/Emotional/etc",
             "caption": "Viral hook caption",
             "description": "SEO description",
-            "tags": "#hashtag1 #hashtag2 #hashtag3"
-        }}
-
-        Example for a horror story:
-        {{
-            "voice": "am_onyx",
-            "folder_name": "horror_woods",
-            "search_query": "scary forest amnesia gameplay no commentary 4k no copyright",
-            "reason": "The deep onyx voice enhances the scary forest atmosphere.",
-            "hook_style": "Shocking",
-            "caption": "I was never supposed to find this in the woods... 💀 #scary",
-            "description": "A terrifying 3 AM encounter that changed everything. Watch until the end to see what was behind the tree. #horrorstories #redditreadings",
-            "tags": "#horror #scary #3am #redditstories #creepy"
+            "tags": "#tags"
         }}
         """
 
