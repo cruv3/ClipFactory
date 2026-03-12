@@ -105,7 +105,20 @@ async def main_loop():
             
             if is_approved:
                 print(f"[*] Uploading to Social Media...")
-                await uploader.distribute_video(video_path, strategy)
+                upload_results = await uploader.distribute_video(video_path, strategy)
+
+                report_msg = "✅ <b>UPLOAD REPORT</b>\n━━━━━━━━━━━━━━━━━━━━\n"
+                for platform, status in upload_results.items():
+                    report_msg += f"<b>{platform}:</b> {status}\n"
+                report_msg += "━━━━━━━━━━━━━━━━━━━━"
+
+                await tg_bot.bot.send_message(
+                    chat_id=TELEGRAM_CHAT_ID, 
+                    text=report_msg, 
+                    parse_mode='HTML',
+                    disable_web_page_preview=True # Verhindert riesige Link-Vorschauen
+                )
+                
                 print(f"[✅] Video successfully distributed!")
                 print(f"\n[*] Cycle finished. Next video in {VIDEO_INTERVAL_HOURS}h...")
                 await asyncio.sleep(VIDEO_INTERVAL_HOURS * 3600)

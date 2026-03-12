@@ -6,7 +6,7 @@ import shutil
 import asyncio
 
 from instagrapi import Client
-from tiktok_uploader.upload import upload_video
+from playwright.async_api import async_playwright
 
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
@@ -15,7 +15,7 @@ from googleapiclient.http import MediaFileUpload
 
 from config import (
     IG_USERNAME, IG_PASSWORD, 
-    TIKTOK_COOKIES, TIKTOK_USERNAME,
+    TIKTOK_COOKIES, TIKTOK_USERNAME, TIKTOK_SESSION_ID,
     YOUTUBE_CLIENT_SECRETS, YOUTUBE_TOKEN_PICKLE, YOUTUBE_SCOPES, VIDEO_HISTORY_JSON, IG_SETTINGS_FILE
 )
 
@@ -23,23 +23,26 @@ class VideoUploader:
     async def distribute_video(self, video_path, strategy):
         if not os.path.exists(video_path):
             print(f"[!] Cannot upload, file not found: {video_path}")
-            return
+            return {"error": "File not found"}
 
+        results = {}
         final_tags = f"{strategy.tags} #shorts #viral"
-
         caption = f"{strategy.caption}\n\n{final_tags}"
         yt_title = strategy.caption[:100]
 
         # Instagram
         ig_url = self._upload_to_instagram(video_path, caption)
+        results["Instagram"] = ig_url if ig_url else "❌ Failed"
         if ig_url: self._log_video_to_history(ig_url, strategy)
         
         # TikTok
         tk_url = await self._upload_to_tiktok(video_path, caption)
+        results["TikTok"] = tk_url if tk_url else "❌ Failed"
         if tk_url: self._log_video_to_history(tk_url, strategy)
         
         # YouTube
         yt_url = self._upload_to_youtube(video_path, yt_title, caption, final_tags)
+        results["YouTube"] = yt_url if yt_url else "❌ Failed"
         if yt_url: self._log_video_to_history(yt_url, strategy)
 
         temp_run_dir = os.path.dirname(video_path)
@@ -50,8 +53,6 @@ class VideoUploader:
             except Exception as e:
                 print(f"[!] Could not cleanup run folder: {e}")
 
-
-    
     def _log_video_to_history(self, uploaded_url, strategy):
         if not uploaded_url:
             return
@@ -111,28 +112,6 @@ class VideoUploader:
             
         except Exception as e:
             print(f"[!] Instagram upload failed: {e}")
-            return None
-
-    def _upload_to_tiktok_sync(self, video_path, caption):
-        return upload_video(
-            filename=video_path,
-            description=caption,
-            cookies=TIKTOK_COOKIES,
-            headless=True
-        )
-    
-    async def _upload_to_tiktok(self, video_path, caption):
-        """Diese Funktion wird von außen aufgerufen und löst den Asyncio-Fehler."""
-        print(f"\n[*] Starting TikTok upload (Async-Thread)...")
-        try:
-            failed = await asyncio.to_thread(self._upload_to_tiktok_sync, video_path, caption)
-            
-            if not failed:
-                print("[+] TikTok upload erfolgreich!")
-                return f"https://www.tiktok.com/@{TIKTOK_USERNAME}"
-            return None
-        except Exception as e:
-            print(f"[!] TikTok Fehler: {e}")
             return None
 
     def _upload_to_youtube(self, video_path, title, description, tags):
@@ -213,6 +192,115 @@ class VideoUploader:
                 
         return build('youtube', 'v3', credentials=creds)
     
+    def _parse_netscape_cookies(self, file_path):
+        cookies = []
+        if not os.path.exists(file_path):
+            return cookies
+
+        with open(file_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                # Kommentare und leere Zeilen ignorieren
+                if line.startswith('#') or not line.strip():
+                    continue
+                
+                parts = line.strip().split('\t')
+                if len(parts) < 7:
+                    continue
+
+                # Netscape Format zu Playwright Dictionary konvertieren
+                cookie = {
+                    'name': parts[5],
+                    'value': parts[6],
+                    'domain': parts[0],
+                    'path': parts[2],
+                    'secure': parts[3].upper() == 'TRUE',
+                    'expires': int(float(parts[4])) if parts[4] != '0' else int(time.time() + 31536000),
+                    'sameSite': 'None' # Oft nötig für TikTok
+                }
+                cookies.append(cookie)
+        return cookies
+    
+    async def _upload_to_tiktok(self, video_path, caption):
+        print(f"\n[*] Starting native TikTok Async upload (Modal-Buster Mode)...")
+
+        async with async_playwright() as p:
+            # Wir nutzen Chromium (Headless für Docker)
+            browser = await p.chromium.launch(headless=True)
+            
+            # Session über die ID setzen
+            context = await browser.new_context()
+            await context.add_cookies(self._parse_netscape_cookies(TIKTOK_COOKIES))
+            
+            page = await context.new_page()
+            # Wichtig: Ein großes Viewport hilft, dass Buttons nicht außerhalb des Bildes sind
+            await page.set_viewport_size({"width": 1280, "height": 720})
+
+            try:
+                print("[*] Navigating to TikTok Upload...")
+                await page.goto("https://www.tiktok.com/tiktokstudio/upload", wait_until="load")
+                
+                # 1. Datei hochladen
+                print("[*] Uploading video file...")
+                file_input = page.locator('input[type="file"]')
+                await file_input.set_input_files(video_path)
+                
+                # 2. Warten, bis das Beschreibungsfeld da ist
+                # TikTok braucht hier oft 5-10 Sekunden zum Initialisieren
+                print("[*] Waiting for video processing...")
+                editor = page.locator("//div[@contenteditable='true']")
+                await editor.wait_for(state="visible", timeout=60000)
+
+                # --- DER MODAL BUSTER ---
+                # Wir drücken einmal 'Escape', um einfache Pop-ups zu schließen
+                await page.keyboard.press("Escape")
+                await page.wait_for_timeout(2000)
+
+                # 3. Beschreibung setzen
+                print("[*] Setting description...")
+                # 'force=True' klickt DURCH das TUX-Overlay hindurch!
+                await editor.click(force=True) 
+                await page.keyboard.press("Control+A")
+                await page.keyboard.press("Backspace")
+                
+                await page.keyboard.type(caption)
+                print("[+] Description set.")
+
+                # 4. Posten
+                # Wir warten kurz, bis der Post-Button aktiv wird
+                await page.wait_for_timeout(5000)
+                post_btn = page.get_by_role("button", name="Post")
+                
+                print("[*] Clicking Post button (forced)...")
+                await post_btn.click(force=True) # Auch hier: Force gegen Overlays!
+                await page.wait_for_timeout(2000)
+                
+                post_now_btn = page.get_by_text("Post now")
+                if await post_now_btn.is_visible():
+                    print("[!] Modal: 'Continue to post?' detected. Clicking 'Post now'...")
+                    await post_now_btn.click(force=True)
+
+                print("[*] Waiting for video link...")
+                try:
+                    await page.wait_for_selector('a[data-tt="components_PostInfoCell_a"]', timeout=20000)
+                    video_link_locator = page.locator('a[data-tt="components_PostInfoCell_a"]').first
+                    relative_url = await video_link_locator.get_attribute("href")
+                    if relative_url:
+                        full_url = f"https://www.tiktok.com{relative_url}" if relative_url.startswith("/") else relative_url
+                        print(f"[*] Video link extracted: {full_url}")
+                        return full_url
+                except Exception as e:
+                    print(f"[!] Link extraction failed: {e}")
+
+                return f"https://www.tiktok.com/@{TIKTOK_USERNAME}"
+
+            except Exception as e:
+                # Screenshot für die Diagnose im Docker speichern
+                error_img = f"data/tiktok_error_{int(time.time())}.png"
+                await page.screenshot(path=error_img)
+                print(f"[!] TikTok Error: {e}. Screenshot saved to {error_img}")
+                return None
+            finally:
+                await browser.close()
 
 # --- TEST RUN ---
 if __name__ == "__main__":
@@ -229,8 +317,17 @@ if __name__ == "__main__":
         description="My sister wanted a child-free wedding, but I brought my kids anyway. Now the whole family is divided. Who is wrong here?",
         tags="#aita #redditstories #familydrama #wedding #storytime #minecraft"
     )
-    
-    uploader = VideoUploader()
-    #urls = uploader.distribute_video("data/test/test_story.mp4", mock_strat)
-    uploader._upload_to_instagram("test", "test")
-    print("\n=== FINAL UPLOAD REPORT ===")
+    test_video_file = "data/test_output/minecraft.mp4"
+
+    async def run_test():
+        uploader = VideoUploader()
+        
+        if not os.path.exists(test_video_file):
+            print(f"[!] TEST ABORTED: File not found at {test_video_file}")
+            return
+
+        print(f"[*] Starting test upload for: {test_video_file}")
+        await uploader._upload_to_tiktok(test_video_file, mock_strat.caption)
+        print("\n=== FINAL UPLOAD REPORT COMPLETE ===")
+
+    asyncio.run(run_test())

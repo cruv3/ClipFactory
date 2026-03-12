@@ -45,6 +45,7 @@ IG_SETTINGS_FILE = os.path.join(SECRETS_DIR, "ig_settings.json")
 # TikTok
 TIKTOK_USERNAME = os.getenv("TIKTOK_USERNAME")
 TIKTOK_COOKIES = os.path.join(SECRETS_DIR, "cookies-tiktok-com.txt")
+TIKTOK_SESSION_ID = os.getenv("TIKTOK_SESSION_ID")
 
 # YouTube
 YOUTUBE_CLIENT_SECRETS = os.path.join(SECRETS_DIR, "client_secrets.json")
