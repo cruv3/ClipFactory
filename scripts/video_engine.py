@@ -13,7 +13,7 @@ if not hasattr(PIL.Image, 'ANTIALIAS'):
     PIL.Image.ANTIALIAS = PIL.Image.LANCZOS
 
 from config import (
-    VIDEO_CHUNKS_DIR, TEST_RUN
+    VIDEO_CHUNKS_DIR, TEST_RUN, FONT_PATH
 )
 
 if platform.system() == "Windows":
@@ -105,9 +105,12 @@ class VideoEngine:
 
     def _create_text_clips(self, word_data, video_width):
         # --- KONFIGURATION ---
-        font = 'Sour-Gummy-Black-Italic'
+        if not os.path.exists(FONT_PATH):
+            raise FileNotFoundError(f"[!] Font not found: {FONT_PATH}")
+        
+        font = FONT_PATH
         fontsize = 60
-        max_allowed_width = int(video_width * 0.6)
+        max_allowed_width = int(video_width * 0.8)
         gap = 5
         
         color_active = "#FFDD00"

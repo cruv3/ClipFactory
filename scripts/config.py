@@ -50,3 +50,7 @@ TIKTOK_COOKIES = os.path.join(SECRETS_DIR, "cookies-tiktok-com.txt")
 YOUTUBE_CLIENT_SECRETS = os.path.join(SECRETS_DIR, "client_secrets.json")
 YOUTUBE_TOKEN_PICKLE = os.path.join(SECRETS_DIR, "youtube_token.pickle")
 YOUTUBE_SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
+
+# Fonts
+FONT_PATH = os.path.join(BASE_PATH, "fonts", "SourGummy_SemiExpanded-ExtraBoldItalic.ttf").replace("\\", "/")
+print(FONT_PATH)
