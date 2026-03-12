@@ -9,13 +9,13 @@ class ScriptRewriter(OllamaProvider):
     def __init__(self):
         super().__init__()       
 
-    def rewrite(self, raw_text, hook_style="Shocking"):
-        print(f"\n[*] 🧠 Ollama is rewriting the script (Hook Style: {hook_style})...")
+    def rewrite(self, raw_text, strategy):
+        print(f"\n[*] 🧠 Ollama is rewriting the script (Hook Style: {strategy.hook_style})...")
         
         past_rules = self._read_past_strategy()
-        strategy_injection = ""
+        past_rules_injection = ""
         if past_rules:
-            strategy_injection = f"""
+            past_rules_injection = f"""
             PAST PERFORMANCE DATA:
             The following rules are based on our recent videos that got the most views:
             {past_rules}
@@ -24,32 +24,35 @@ class ScriptRewriter(OllamaProvider):
             """
         
         prompt = f"""
-        You are a master viral storyteller. Your task is to transform the premise into a FULL, highly cinematic narrative script for a 60-90 second video.
+        You are a master viral storyteller. Your task is to transform the short premise into a FULL, highly cinematic narrative script for a 60-90 second video.
         
-        WORD COUNT TARGET: 220 - 260 words. (CRITICAL: Do not write less than 200 words).
+        LENGTH CRITERIA (CRITICAL): 
+        - The script MUST be at least 250 words long.
+        - You MUST write a minimum of 15 to 20 sentences.
+        - Do not rush the narrative. Expand on every single detail to stretch the duration.
 
-        NARRATIVE ARCHITECTURE (Mandatory):
-        1. THE HOOK (0-5s): A devastating, controversial, or terrifying first sentence (Style: {hook_style}).
-        2. THE SETTING (5-30s): Establish the scene. Add intense sensory details. What does it smell like? How cold is the room? Make the listener feel they are THERE.
-        3. THE ESCALATION (30-60s): Something goes wrong. Introduce a twist or a realization. Increase the pacing with shorter sentences.
-        4. THE FINAL BLOW (60-90s): A shocking conclusion or a haunting cliffhanger. This MUST feel like a complete story arc.
+        NARRATIVE ARCHITECTURE (Mandatory pacing):
+        1. THE HOOK: A devastating or terrifying first sentence (Style: {strategy.hook_style}).
+        2. THE SCENE BUILDING: Do not skip this! Spend at least 4 sentences describing the room, the lighting, the temperature, and the smell. Make it highly immersive.
+        3. THE SLOW ESCALATION: Stretch the suspense. Describe the physical reactions of the narrator (heartbeat, breathing, sweating) and their internal monologue before the main event happens.
+        4. THE FINAL BLOW: A shocking conclusion or haunting cliffhanger.
 
         STRICT STYLE RULES:
-        - Output ONLY the spoken script.
-        - NO intros like "Here is your script" or "Sure, I can help".
-        - NO conversational filler.
+        - Output ONLY the spoken script. No titles, no formatting.
+        - NO intros like "Here is your script" or "Sure".
         - Start immediately with the hook.
         - Use "I" (first-person perspective).
-        - Use punchy, dramatic sentences.
-        - ZERO filler, ZERO intros. Start with the hook immediately.
-        - Invent names, locations, or specific dialogue if needed to reach the word count and make it immersive.
-        
-        {strategy_injection}
+        - Invent heavy sensory details, specific objects in the room, or internal thoughts to ensure the script is extremely long and detailed.
 
-        Original premise:
+        STRATEGY CONTEXT:
+        {strategy}
+        
+        {past_rules_injection}
+
+        Original short premise to expand upon:
         {raw_text}
         
-        SPOKEN SCRIPT ONLY (Start immediately with the hook):
+        SPOKEN SCRIPT ONLY (Start immediately with the hook. Remember: Expand details heavily to reach the length!):
         """
         
         payload = {
@@ -65,11 +68,20 @@ class ScriptRewriter(OllamaProvider):
             data = response.json()
             script = data.get("response", "").strip()
             
+            # --- NEU: KI-Gequatsche am Anfang killen ---
+            # Sucht nach Sätzen wie "Here is your script:", "Sure!", "Certainly, here is the rewritten story\n\n"
+            # am GANZ ANFANG des Textes und löscht sie.
+            ai_chatter_pattern = r'^(?:sure[,! ]|certainly[,! ]|of course[,! ]|here is |here\'s ).{0,100}?(?:script|story|rewrite|rewritten|narrative).*?[:\n]+'
+            script = re.sub(ai_chatter_pattern, '', script, flags=re.IGNORECASE).strip()
+            # -------------------------------------------
+            
             # Entfernt alle Arten von Klammern (Regieanweisungen)
             script = re.sub(r'\(.*?\)', '', script)
             script = re.sub(r'\[.*?\]', '', script)
             script = re.sub(r'\*.*?\*', '', script) # Entfernt auch *flüstert* etc.
-            
+            script = script.replace(' -', '.')  # Killt alle "
+            script = script.replace('"', '')  # Killt alle "
+            script = script.replace(':', ',') # Macht aus Doppelpunkten ein Komma (für eine saubere Sprechpause)
             # Bereinigt doppelte Leerzeichen, die durch Regex entstehen können
             script = " ".join(script.split())
 
@@ -93,11 +105,36 @@ class ScriptRewriter(OllamaProvider):
     
 # --- TEST RUN ---
 if __name__ == "__main__":
+    import dataclasses
+
+    @dataclasses.dataclass
+    class MockStrategy:
+        voice: str
+        folder_name: str
+        search_query: str
+        reason: str
+        hook_style: str
+        caption: str
+        description: str
+        tags: str
+        output_dir: str = "data/test_output"
+
+    strategy = MockStrategy(
+        voice="af_sky",
+        folder_name="minecraft",
+        search_query="minecraft parkour no copyright gameplay",
+        reason="High energy parkour fits the shocking narrative twist.",
+        hook_style="Shocking",
+        caption="My reflection blinked... but I didn't. 😳",
+        description="A terrifying discovery in the bathroom mirror leads to a dark realization.",
+        tags="#horror #minecraft #storytime #creepy"
+    )
+
     rewriter = ScriptRewriter()
     
-    test_story = "My mirror reflection blinked today, but I didn't. Now it's smiling, even though I'm crying."
+    test_story = "Here is a written script, My mirror reflection blinked today, Certainly but I didn't. Now it's smiling, even though I'm crying."
     
-    finished_script = rewriter.rewrite(test_story, "Shocking")
+    finished_script = rewriter.rewrite(test_story, strategy)
     
     if finished_script:
         print("=== GENERATED SCRIPT ===")

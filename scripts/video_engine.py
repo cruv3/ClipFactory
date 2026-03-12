@@ -43,8 +43,9 @@ class VideoEngine:
             (w, h) = video_clip.size
             target_width = int((h * (9 / 16)) // 2) * 2
             video_clip = vfx.crop(video_clip, width=target_width, height=h, x_center=w/2, y_center=h/2)
+            video_clip = video_clip.resize(newsize=(1080, 1920))
 
-            text_overlays = self._create_text_clips(word_timestamps, target_width)
+            text_overlays = self._create_text_clips(word_timestamps, 1080)
             final_video = CompositeVideoClip([video_clip] + text_overlays).set_audio(audio_clip)
             
             output_path = os.path.join(strategy.output_dir, f"{strategy.folder_name}.mp4")
@@ -109,9 +110,9 @@ class VideoEngine:
             raise FileNotFoundError(f"[!] Font not found: {FONT_PATH}")
         
         font = FONT_PATH
-        fontsize = 60
-        max_allowed_width = int(video_width * 0.8)
-        gap = 5
+        fontsize = 130  
+        max_allowed_width = int(video_width * 0.85) 
+        gap = 15
         
         color_active = "#FFDD00"
         stroke_active_color = "#B8860B"
@@ -119,7 +120,7 @@ class VideoEngine:
         color_inactive = "#FFFFFF"
         stroke_inactive_color = "#B0B0B0"
         
-        stroke_width = 3.0 
+        stroke_width = 6.0           # Fetterer Rand für maximale Lesbarkeit
         # ---------------------
 
         def make_clean_text(txt, c_fill, c_stroke):

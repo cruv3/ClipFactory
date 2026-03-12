@@ -72,7 +72,7 @@ async def main_loop():
                 continue
             
             # 4. Rewriting
-            script = rewriter.rewrite(raw_story, hook_style=strategy.hook_style)
+            script = rewriter.rewrite(raw_story, strategy)
             if not script: continue
 
             # 5. Voice Generation
