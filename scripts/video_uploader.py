@@ -52,6 +52,8 @@ class VideoUploader:
                 print(f"[+] Run folder cleaned up: {temp_run_dir}")
             except Exception as e:
                 print(f"[!] Could not cleanup run folder: {e}")
+                
+        return results
 
     def _log_video_to_history(self, uploaded_url, strategy):
         if not uploaded_url:

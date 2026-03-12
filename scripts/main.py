@@ -116,9 +116,9 @@ async def main_loop():
                     chat_id=TELEGRAM_CHAT_ID, 
                     text=report_msg, 
                     parse_mode='HTML',
-                    disable_web_page_preview=True # Verhindert riesige Link-Vorschauen
+                    disable_web_page_preview=True
                 )
-                
+
                 print(f"[✅] Video successfully distributed!")
                 print(f"\n[*] Cycle finished. Next video in {VIDEO_INTERVAL_HOURS}h...")
                 await asyncio.sleep(VIDEO_INTERVAL_HOURS * 3600)

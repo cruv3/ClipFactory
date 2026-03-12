@@ -143,11 +143,20 @@ class VideoEngine:
             
             # WICHTIG: Leerzeichen hinzufügen, damit kursive Ränder nicht abschneiden!
             word_text = f' {current_word_item["word"].upper()} '
-            
+
             start_t = current_word_item["start"]
-            end_t = current_word_item["end"]
+
+            if i < len(word_data) - 1:
+                next_word_start = word_data[i+1]["start"]
+                # Wir setzen das Ende des aktuellen Wortes auf den Start des nächsten
+                end_t = next_word_start
+            else:
+                end_t = current_word_item["end"]
+
+            max_duration = 1.5    
             dur = end_t - start_t
             if dur <= 0: dur = 0.1
+            if dur > max_duration: dur = max_duration
             
             is_even = i % 2 == 0
             if is_even:
