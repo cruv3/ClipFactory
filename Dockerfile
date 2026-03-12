@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/playwright/python:v1.58.2-noble
+FROM mcr.microsoft.com/playwright/python:v1.58.0-noble
 
 # 1. ImageMagick und Abhängigkeiten installieren
 RUN apt-get update && apt-get install -y \
