@@ -21,8 +21,7 @@ WORKDIR /app
 # 3. Requirements installieren (Caching nutzen)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-RUN playwright install chrome
-RUN playwright install-deps chrome
+RUN playwright install
 
 # 4. Den Rest kopieren (inkl. deiner neuen Secrets)
 COPY . .
