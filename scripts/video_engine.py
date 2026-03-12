@@ -55,8 +55,13 @@ class VideoEngine:
                 codec="libx264", 
                 audio_codec="aac", 
                 fps=30, 
-                preset="fast", 
-                ffmpeg_params=["-pix_fmt", "yuv420p"],
+                preset="medium",      # 'medium' oder 'slow' für bessere Kompression/Qualität
+                bitrate="8000k",      # Hohe Bitrate für scharfe Kanten
+                ffmpeg_params=[
+                    "-pix_fmt", "yuv420p",
+                    "-crf", "18",      # Constant Rate Factor: 18 ist visuell verlustfrei
+                    "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2" # Fix für ungerade Dimensionen
+                ],
                 logger=None
             )
 
@@ -98,36 +103,92 @@ class VideoEngine:
         
         return output_path
 
-    def _create_text_clips(self, word_data, video_width): # video_width hinzugefügt
-        text_clips = []
-        # Sicherheitsmarge: Text soll maximal 85% der Bildschirmbreite füllen
-        max_allowed_width = int(video_width * 0.85)
+    def _create_text_clips(self, word_data, video_width):
+        # --- KONFIGURATION ---
+        font = 'Sour-Gummy-Black-Italic'
+        fontsize = 60
+        max_allowed_width = int(video_width * 0.6)
+        gap = 5
         
-        for data in word_data:
-            word = data["word"]
-            start_t = data["start"]
-            dur = data["end"] - data["start"]
+        color_active = "#FFDD00"
+        stroke_active_color = "#B8860B"
+        
+        color_inactive = "#FFFFFF"
+        stroke_inactive_color = "#B0B0B0"
+        
+        stroke_width = 3.0 
+        # ---------------------
+
+        def make_clean_text(txt, c_fill, c_stroke):
+            bg_clip = TextClip(
+                txt=txt, fontsize=fontsize, font=font,
+                color=c_stroke, stroke_color=c_stroke, 
+                stroke_width=stroke_width * 2, method='label'
+            )
+            fg_clip = TextClip(
+                txt=txt, fontsize=fontsize, font=font,
+                color=c_fill, method='label'
+            )
+            return CompositeVideoClip([bg_clip, fg_clip.set_position('center')], size=bg_clip.size)
+        # ----------------------------------
+
+        text_clips = []
+        
+        for i in range(len(word_data)):
+            current_word_item = word_data[i]
+            
+            # WICHTIG: Leerzeichen hinzufügen, damit kursive Ränder nicht abschneiden!
+            word_text = f' {current_word_item["word"].upper()} '
+            
+            start_t = current_word_item["start"]
+            end_t = current_word_item["end"]
+            dur = end_t - start_t
             if dur <= 0: dur = 0.1
+            
+            is_even = i % 2 == 0
+            if is_even:
+                pair_text_1 = word_text
+                raw_word_2 = word_data[i+1]["word"].upper() if i+1 < len(word_data) else ""
+                pair_text_2 = f' {raw_word_2} ' if raw_word_2 else ""
 
-            # 1. Clip normal erstellen
-            txt_clip = TextClip(
-                txt=word,
-                fontsize=90,
-                color='white',
-                font='Georgia',
-                stroke_color='black',
-                stroke_width=2,
-                method='label'
-            ).set_start(start_t).set_duration(dur).set_position('center')
+                c1, s1_c = color_active, stroke_active_color
+                c2, s2_c = color_inactive, stroke_inactive_color
+            else:
+                raw_word_1 = word_data[i-1]["word"].upper()
+                pair_text_1 = f' {raw_word_1} '
+                pair_text_2 = word_text
 
-            # 2. Prüfen: Ist das Wort zu breit für den Screen?
-            if txt_clip.w > max_allowed_width:
-                # Clip proportional verkleinern, damit er in die Schranken passt
-                txt_clip = txt_clip.resize(width=max_allowed_width)
-                # Nach dem Resizen wieder zentrieren (wichtig!)
-                txt_clip = txt_clip.set_position('center')
+                c1, s1_c = color_inactive, stroke_inactive_color
+                c2, s2_c = color_active, stroke_active_color
 
-            text_clips.append(txt_clip)
+            # Linken Clip über die neue Hilfsfunktion erstellen!
+            clip_left = make_clean_text(pair_text_1, c1, s1_c).set_start(start_t).set_duration(dur)
+
+            # Rechten Clip erstellen (falls vorhanden)
+            clip_right = None
+            if pair_text_2.strip(): 
+                clip_right = make_clean_text(pair_text_2, c2, s2_c).set_start(start_t).set_duration(dur)
+
+            # --- POSITIONIERUNG ---
+            if clip_right:
+                total_w = clip_left.w + gap + clip_right.w
+                if total_w > max_allowed_width:
+                    scale = max_allowed_width / total_w
+                    clip_left = clip_left.resize(scale)
+                    clip_right = clip_right.resize(scale)
+                    total_w = max_allowed_width
+                
+                start_x = (video_width - total_w) / 2
+                clip_left = clip_left.set_position((start_x, 'center'))
+                clip_right = clip_right.set_position((start_x + clip_left.w + gap, 'center'))
+                
+                text_clips.append(clip_left)
+                text_clips.append(clip_right)
+            else:
+                if clip_left.w > max_allowed_width:
+                    clip_left = clip_left.resize(width=max_allowed_width)
+                clip_left = clip_left.set_position('center')
+                text_clips.append(clip_left)
         
         return text_clips
 
@@ -142,7 +203,7 @@ class VideoEngine:
         temp_video = os.path.join(category_dir, "temp_source.mp4")
         
         ydl_opts = {
-            'format': 'bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]',
+            'format': 'bestvideo[height<=1080][vcodec^=avc1]+bestaudio[ext=m4a]/best[ext=mp4]',
             'outtmpl': temp_video,
             'quiet': True,
             'noprogress': True,
@@ -151,7 +212,7 @@ class VideoEngine:
             'fragment_retries': 10,
             'match_filter': yt_dlp.utils.match_filter_func("duration > 600 & height >= 1080"),
         }
-        
+
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.extract_info(f"ytsearch1:{full_query}", download=True)
