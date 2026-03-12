@@ -52,7 +52,7 @@ class VideoUploader:
                 print(f"[+] Run folder cleaned up: {temp_run_dir}")
             except Exception as e:
                 print(f"[!] Could not cleanup run folder: {e}")
-                
+
         return results
 
     def _log_video_to_history(self, uploaded_url, strategy):
@@ -269,12 +269,12 @@ class VideoUploader:
 
                 # 4. Posten
                 # Wir warten kurz, bis der Post-Button aktiv wird
-                await page.wait_for_timeout(5000)
                 post_btn = page.get_by_role("button", name="Post")
+
                 
-                print("[*] Clicking Post button (forced)...")
-                await post_btn.click(force=True) # Auch hier: Force gegen Overlays!
-                await page.wait_for_timeout(2000)
+                print("[*] Clicking Post button...")
+                post_btn = page.get_by_role("button", name="Post")
+                await post_btn.click(timeout=120000)
                 
                 post_now_btn = page.get_by_text("Post now")
                 if await post_now_btn.is_visible():
@@ -292,6 +292,9 @@ class VideoUploader:
                         return full_url
                 except Exception as e:
                     print(f"[!] Link extraction failed: {e}")
+                    debug_img = f"data/tiktok_stuck_after_post_{int(time.time())}.png"
+                    await page.screenshot(path=debug_img)
+                    print(f"[🔍] Saved DEBUG SCREENSHOT to see what blocked the upload: {debug_img}")
 
                 return f"https://www.tiktok.com/@{TIKTOK_USERNAME}"
 
