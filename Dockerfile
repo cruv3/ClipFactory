@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM mcr.microsoft.com/playwright/python:v1.58.2-noble
 
 # 1. ImageMagick und Abhängigkeiten installieren
 RUN apt-get update && apt-get install -y \
@@ -21,7 +21,6 @@ WORKDIR /app
 # 3. Requirements installieren (Caching nutzen)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-RUN playwright install
 
 # 4. Den Rest kopieren (inkl. deiner neuen Secrets)
 COPY . .
