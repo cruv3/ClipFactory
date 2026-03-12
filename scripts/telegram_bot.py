@@ -4,6 +4,7 @@ from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 from telegram.ext import Application, CallbackQueryHandler
 from telegram.request import HTTPXRequest
+import subprocess
 
 from utils import StoryStrategy
 from config import (
@@ -22,6 +23,8 @@ class TelegramApproval:
     async def send_video_for_approval(self, video_path, strategy):
         await asyncio.sleep(2)
         
+        preview_path = self._create_preview(video_path)
+
         strategy_details = (
             f"🎬 <b>AI STRATEGY ANALYSIS</b>\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
@@ -44,7 +47,7 @@ class TelegramApproval:
 
         try:
             print(f"[*] Sending video & strategy to Telegram...")
-            with open(video_path, 'rb') as video_file:
+            with open(preview_path, 'rb') as video_file:
                 message = await self.bot.send_video(
                     chat_id=TELEGRAM_CHAT_ID,
                     video=video_file, # Hier das Datei-Objekt übergeben
@@ -56,34 +59,34 @@ class TelegramApproval:
                     connect_timeout=600
                 )
                 self.last_message_id = message.message_id
+
+                if preview_path != video_path and os.path.exists(preview_path):
+                    os.remove(preview_path)
+                    
                 return message.message_id
         except Exception as e:
             print(f"[!] Telegram Upload Error: {e}")
+
+    def _create_preview(self, video_path):
+        preview_path = video_path.replace(".mp4", "_preview.mp4")
+        print(f"[*] Creating 20s preview for Telegram...")
+        
+        cmd = [
+            'ffmpeg', '-y', '-i', video_path,
+            '-ss', '0', '-t', '20',
+            '-vf', 'scale=-1:480',
+            '-c:v', 'libx264', '-crf', '28', '-preset', 'veryfast',
+            '-c:a', 'aac', '-b:a', '128k',
+            preview_path
+        ]
+        
+        try:
+            subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return preview_path
+        except Exception as e:
+            print(f"[!] Preview Creation Error: {e}")
+            return video_path
     
-    async def _handle_callback(self, update, context):
-        query = update.callback_query
-        await query.answer()
-        
-        self.decision = query.data # "approve" oder "abort"
-        print(f"[*] Telegram response received: {self.decision}")
-
-        # Status-Text basierend auf Klick festlegen
-        if self.decision == "approve":
-            status = "<b>✅ STATUS: Approved & Uploading...</b>"
-        else:
-            status = "<b>❌ STATUS: Aborted by User.</b>"
-
-        # UI Update direkt über den Callback-Context
-        await self._update_message_status(
-            context.bot, 
-            query.message.chat_id, 
-            query.message.message_id, 
-            status,
-            ""
-        )
-        
-        self.event.set()
-
     async def wait_for_approval(self, timeout=1800):
         self.event.clear()
         self.decision = None
@@ -118,6 +121,31 @@ class TelegramApproval:
         await application.shutdown()
 
         return self.decision == "approve"
+    
+    async def _handle_callback(self, update, context):
+        query = update.callback_query
+        await query.answer()
+        
+        self.decision = query.data # "approve" oder "abort"
+        print(f"[*] Telegram response received: {self.decision}")
+
+        # Status-Text basierend auf Klick festlegen
+        if self.decision == "approve":
+            status = "<b>✅ STATUS: Approved & Uploading...</b>"
+        else:
+            status = "<b>❌ STATUS: Aborted by User.</b>"
+
+        # UI Update direkt über den Callback-Context
+        await self._update_message_status(
+            context.bot, 
+            query.message.chat_id, 
+            query.message.message_id, 
+            status,
+            ""
+        )
+        
+        self.event.set()
+
     
     async def _update_message_status(self, bot, chat_id, message_id, status_text, original_caption):
         try:
