@@ -35,7 +35,7 @@ class ScriptRewriter(OllamaProvider):
 
             while attempt < max_retries:
                 attempt += 1
-                print(f"\n[*] 🧠 Ollama rewriting script (Hook: {strategy.hook_style}) [Attempt {attempt}/{max_retries}]...")
+                print(f"\n[*] 🧠 Ollama strategy using model: '{current_model}'... [Attempt {attempt}/{max_retries}]...")
 
                 prompt = f"""
                 {info_message}
