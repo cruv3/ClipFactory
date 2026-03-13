@@ -19,8 +19,8 @@ from config import (
 
 async def main_loop():
     scraper = RedditScraper()
-    rewriter = ScriptRewriter()
-    analyzer = StoryAnalyzer()
+    rewriter = ScriptRewriter(0.6, 0.9, 4096)
+    analyzer = StoryAnalyzer(0.7, 0.9)
     voice_eng = VoiceEngine()
     video_eng = VideoEngine()
     uploader = VideoUploader()

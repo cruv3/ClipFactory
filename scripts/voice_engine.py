@@ -13,6 +13,7 @@ from config import KOKORO_URL, KOKORO_URL_WEB
 class VoiceEngine:
     def __init__(self):
         self.model_verified = self.verify_kokoro()
+        self.model = whisper.load_model("base")
 
     def generate_audio(self, text, strategy, speed=1.0):
         os.makedirs(strategy.output_dir, exist_ok=True)
@@ -48,8 +49,7 @@ class VoiceEngine:
             return None
         
     def get_word_timestamps(self, audio_path):
-        model = whisper.load_model("base")
-        result = model.transcribe(audio_path, verbose=False, word_timestamps=True)
+        result = self.model.transcribe(audio_path, verbose=False, word_timestamps=True)
         
         word_data = []
         for segment in result['segments']:

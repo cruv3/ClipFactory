@@ -23,7 +23,8 @@ STRATEGY_LOG = os.path.join(DATA_DIR, "ai_strategy.txt")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.1")
+OLLAMA_MODEL_BACKUP = os.getenv("OLLAMA_MODEL_BACKUP", "llama3.1")
 OLLAMA_BASE_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
 OLLAMA_GENERATE_URL = f"{OLLAMA_BASE_URL}/api/generate"
 OLLAMA_PULL_URL = f"{OLLAMA_BASE_URL}/api/pull"

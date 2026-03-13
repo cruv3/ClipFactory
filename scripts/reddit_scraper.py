@@ -12,7 +12,8 @@ class RedditScraper():
         self.subreddits= [
             "AmItheAsshole", 
             "TrueOffMyChest", 
-            "tifu", 
+            "tifu",
+            "BestofRedditorUpdates",
             "EntitledParents", 
             "MaliciousCompliance", 
             "LetsNotMeet",
@@ -44,8 +45,10 @@ class RedditScraper():
                 title = post.get('title', '')
                 text = post.get('selftext', '')
                 
+                word_count = len(text.split())
                 # Qualitäts-Check: Zu kurze Texte ignorieren
-                if len(text) < 150: # Ein bisschen mehr Text für ein 60s Video
+                if word_count < 100:
+                    self._save_used_post(post_id)
                     continue
 
                 score = post.get('score', 0)
@@ -80,12 +83,11 @@ class RedditScraper():
 # --- TEST RUN ---
 if __name__ == "__main__":
     scraper = RedditScraper()
-    subs = ["ShortScaryStories", "TrueOffMyChest", "confessions"]
-    
-    story = scraper.get_top_story(subs)
+
+    story = scraper.get_top_story()
     
     if story:
-        print("Found Story Content (Preview):")
-        print(story[:200] + "...")
+        print(story + "...")
+        print(len(story.split()))
     else:
         print("No new stories found today.")

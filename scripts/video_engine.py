@@ -3,6 +3,7 @@ import glob
 import subprocess
 import yt_dlp
 import platform
+import random
 from moviepy.config import change_settings
 from moviepy.editor import VideoFileClip, AudioFileClip, TextClip, CompositeVideoClip
 import moviepy.video.fx.all as vfx
@@ -37,6 +38,10 @@ class VideoEngine:
         try:      
             audio_clip = AudioFileClip(audio_path)
             video_clip = VideoFileClip(bg_video_path)
+
+            # --- ANTI-DUPLICATE HASH BUSTER ---
+            color_shift = random.uniform(0.98, 1.02)
+            video_clip = video_clip.fx(vfx.colorx, color_shift)
             
             # Video auf Audiolänge kürzen
             video_clip = video_clip.subclip(0, audio_clip.duration)
@@ -56,7 +61,7 @@ class VideoEngine:
                 codec="libx264", 
                 audio_codec="aac", 
                 fps=30, 
-                preset="medium",      # 'medium' oder 'slow' für bessere Kompression/Qualität
+                preset="slow",      # 'medium' oder 'slow' für bessere Kompression/Qualität
                 bitrate="8000k",      # Hohe Bitrate für scharfe Kanten
                 ffmpeg_params=[
                     "-pix_fmt", "yuv420p",

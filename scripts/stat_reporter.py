@@ -6,7 +6,7 @@ import yt_dlp
 from datetime import datetime
 
 from config import (
-    OLLAMA_MODEL, OLLAMA_GENERATE_URL, VIDEO_HISTORY_JSON
+    OLLAMA_MODEL, OLLAMA_GENERATE_URL, VIDEO_HISTORY_JSON, STRATEGY_LOG
 )
 from ollama_provider import OllamaProvider
 
@@ -54,10 +54,10 @@ class StatReporter(OllamaProvider):
             ai_response = data.get("response", "").strip()
             
             # Save the AI rules to a text file for the StoryAnalyzer to read later
-            with open(self.ai_strategy_file, "w", encoding="utf-8") as f:
+            with open(STRATEGY_LOG, "w", encoding="utf-8") as f:
                 f.write(ai_response)
                 
-            print(f"[+] AI successfully updated the strategy: {self.ai_strategy_file}")
+            print(f"[+] AI successfully updated the strategy: {STRATEGY_LOG}")
             print("\n=== NEW AI STRATEGY RULES ===")
             print(ai_response)
             print("=============================\n")
