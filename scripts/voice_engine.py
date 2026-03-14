@@ -32,7 +32,7 @@ class VoiceEngine:
         }
         
         try:
-            response = requests.post(KOKORO_URL, json=payload, timeout=60)
+            response = requests.post(KOKORO_URL, json=payload, timeout=600)
             response.raise_for_status()
             
             with open(full_output_path, "wb") as audio_file:
@@ -79,20 +79,50 @@ class VoiceEngine:
 
 # --- TEST RUN ---
 if __name__ == "__main__":
+    import dataclasses
+
     engine = VoiceEngine()
 
     while not engine.model_verified:
         time.sleep(10)
         engine.model_verified = engine.verify_kokoro()
         
-    test_text = "The shadows in my room don't match the furniture anymore. One of them just stood up."
+    # Genau ~250 Wörter: Perfekt für einen Stress-Test von Kokoro & Whisper!
+    test_text = """
+    I recently moved into a new apartment with a guy I found online, let's call him Mark. At first, everything was completely normal. 
+    We split the rent, kept the place clean, and occasionally played video games on the weekends. But then, the weird things started happening. 
+    It began with the food. I'd buy a carton of milk, and the next day it would be exactly half empty, but the cap was glued shut. 
+    Literally superglued. I thought it was a bizarre prank. Then, I started noticing my shoes were being moved. 
+    I always leave them pointing towards the door, but I'd wake up and they'd be facing the window. When I confronted Mark, he just laughed and said I was being paranoid. 
+    Last week, it escalated to a terrifying level. I woke up at 3 AM because I heard a faint scratching sound coming from the living room. 
+    I crept out of bed, peeked around the corner, and saw Mark sitting in the pitch dark. He wasn't watching TV or on his phone. 
+    He was just staring blankly at the blank wall, running a butter knife up and down the drywall, creating this agonizing scraping noise. 
+    I flicked the light switch, and he instantly snapped his head towards me, smiled this incredibly wide, unnatural smile, and whispered, 
+    'They are almost through.' I locked myself in my room and haven't slept since. My lease isn't up for another six months. What am I supposed to do?
+    """
     
+    # Saubere MockStrategy mit allen Properties, die auch die echte Engine liefert
+    @dataclasses.dataclass
     class MockStrategy:
         voice: str
+        hook_style: str
+        folder_name: str
+        search_query: str
+        reason: str
+        caption: str
+        description: str
+        tags: str
         output_dir: str
         
     test_strategy = MockStrategy(
         voice="am_onyx",
+        hook_style="Creepy",
+        folder_name="creepy_stories",
+        search_query="dark forest drone 4k no commentary",
+        reason="A creepy story needs a deep voice and unsettling background.",
+        caption="My roommate is doing WHAT at 3 AM?! 😳🔪",
+        description="This roommate story will give you nightmares...",
+        tags="#storytime #scary #creepy #reddit #roommate",
         output_dir="data/test_run_001"
     )
     
@@ -100,3 +130,6 @@ if __name__ == "__main__":
     
     if path:
         print(f"🎉 Voice Test successful! File at: {path}")
+        timestamps = engine.get_word_timestamps(path)
+        if timestamps:
+            print(f"✅ Timestamps successfully extracted. First word: {timestamps[0]} | Last word: {timestamps[-1]}")

@@ -7,7 +7,7 @@ from utils import generate_story_id
 # WICHTIG: Fallback-Modelle in config.py definieren!
 from config import (
     OLLAMA_GENERATE_URL, DATA_DIR, 
-    OLLAMA_MODEL, OLLAMA_MODEL_BACKUP 
+    OLLAMA_MODEL, OLLAMA_MODEL_BACKUP
 )
 from ollama_provider import OllamaProvider
 
@@ -33,28 +33,30 @@ class StoryAnalyzer(OllamaProvider):
         1. Select a Voice: Choose from {self.available_voices}. Pick a voice that matches the tone (e.g., deep for scary, energetic for funny/drama).
         
         2. Background Strategy (CRITICAL FOR RETENTION):
-           We are making viral "Reddit-style" stories. We DO NOT want cinematic or realistic backgrounds (like restaurants or cafes). They are too boring.
-           We ONLY use highly stimulating "Brainrot" or visually satisfying footage to keep viewer retention at 100%.
+           We are making viral "Reddit-style" stories. We DO NOT want cinematic or realistic backgrounds (like cafes or people talking).
+           We ONLY use highly stimulating "Brainrot", ASMR, or visually satisfying gameplay to keep viewer retention at 100%.
            
-           CHOOSE ONE OF THESE HIGH-RETENTION CATEGORIES based on the story's vibe:
-           - If Action/Angry/Crazy -> Choose 'gta5_stunts' (Search: "gta 5 mega ramp car jumping no commentary 4k")
-           - If Funny/TIFU/Embarrassing -> Choose 'minecraft_parkour' (Search: "minecraft parkour gameplay no commentary")
-           - If Drama/Relationship/Casual -> Choose 'satisfying_slime' or 'kinetic_sand' (Search: "satisfying kinetic sand cutting ASMR no commentary")
-           - If Scary/Creepy/Mysterious -> Choose 'nature_drone' or 'liminal_spaces' (Search: "creepy liminal space background loop 4k" or "dark forest drone 4k")
-           - If Fast-paced/Chaotic -> Choose 'subway_surfers' (Search: "subway surfers gameplay background no copyright")
-
-           RULES:
-           - The 'folder_name' MUST be one of the categories mentioned above.
-           - The 'search_query' MUST be a generic brainrot/satisfying search term from the examples above. 
-           - NEVER search for the actual content of the story.
+           Because you are an advanced AI, you have CREATIVE FREEDOM to invent the perfect background theme!
+           
+           RULES FOR YOUR CHOICE:
+           - The 'folder_name' should be a short, categorized name (e.g., 'gta5_stunts', 'satisfying_sand', 'beamng_crashes', 'minecraft_parkour', 'funny_pets').
+           - Create a highly specific and creative 'search_query' for YouTube.
+           - CRITICAL: You MUST append "no commentary" and "4k" (or "1080p") to the 'search_query' so our scraper finds clean footage.
+           - CRITICAL: NEVER search for the actual content of the story. Only search for the background footage.
+           
+           EXAMPLES OF GOOD SEARCH QUERIES:
+           - "gta 5 spiderman mod mega ramp no commentary 4k"
+           - "satisfying kinetic sand ASMR slicing no commentary"
+           - "beamng drive insane crashes no commentary 1080p"
+           - "funny cats doing weird things background loop 4k"
 
         Return ONLY a raw JSON object (no markdown, no backticks, no introduction). Follow this exact structure:
         {{
             "voice": "af_bella",
-            "folder_name": "gta5_stunts",
-            "search_query": "gta 5 mega ramp car jumping no commentary 4k",
-            "reason": "The story is an angry breakup, fast-paced GTA stunts will keep the viewer hooked during the drama.",
-            "hook_style": "Controversial",
+            "folder_name": "beamng_crashes",
+            "search_query": "beamng drive insane cliff crashes no commentary 4k",
+            "reason": "The story is chaotic and destructive, watching car crashes satisfies that fast-paced energy.",
+            "hook_style": "Shocking",
             "caption": "Wait until the end... 🚩",
             "description": "Crazy storytime! #reddit #storytime #fyp",
             "tags": "#redditstories #drama #storytime"

@@ -6,7 +6,7 @@ import yt_dlp
 from datetime import datetime
 
 from config import (
-    OLLAMA_MODEL, OLLAMA_GENERATE_URL, VIDEO_HISTORY_JSON, STRATEGY_LOG
+    OLLAMA_MODEL, OLLAMA_MODEL_BACKUP ,OLLAMA_GENERATE_URL, VIDEO_HISTORY_JSON, STRATEGY_LOG
 )
 from ollama_provider import OllamaProvider
 
@@ -39,37 +39,47 @@ class StatReporter(OllamaProvider):
         """
         
         print("[*] 🧠 Ollama is analyzing the stats and generating a strategy...")
-        
-        payload = {
-            "model": OLLAMA_MODEL,
-            "prompt": prompt,
-            "stream": False
-        }
-        
-        try:
-            response = requests.post(OLLAMA_GENERATE_URL, json=payload)
-            response.raise_for_status()
-            
-            data = response.json()
-            ai_response = data.get("response", "").strip()
-            
-            # Save the AI rules to a text file for the StoryAnalyzer to read later
-            with open(STRATEGY_LOG, "w", encoding="utf-8") as f:
-                f.write(ai_response)
-                
-            print(f"[+] AI successfully updated the strategy: {STRATEGY_LOG}")
-            print("\n=== NEW AI STRATEGY RULES ===")
-            print(ai_response)
-            print("=============================\n")
 
-            with open(VIDEO_HISTORY_JSON, "w", encoding="utf-8") as f:
-                json.dump([], f)
-            print("Video history JSON has been wiped clean for the next cycle.")
+        models_to_try = [OLLAMA_MODEL]
+        if OLLAMA_MODEL_BACKUP:
+            models_to_try.append(OLLAMA_MODEL_BACKUP)
+        
+        for current_model in models_to_try:
+            print(f"\n[*] 🧠 Ollama creating stat report using model: '{current_model}'...")
+        
+            payload = {
+                "model": current_model,
+                "prompt": prompt,
+                "stream": False
+            }
             
-        except requests.exceptions.ConnectionError:
-            print("[!] ERROR: Could not connect to Ollama.")
-        except Exception as e:
-            print(f"[!] An error occurred during AI analysis: {e}")
+            try:
+                response = requests.post(OLLAMA_GENERATE_URL, json=payload)
+                response.raise_for_status()
+                
+                data = response.json()
+                ai_response = data.get("response", "").strip()
+                
+                # Save the AI rules to a text file for the StoryAnalyzer to read later
+                with open(STRATEGY_LOG, "w", encoding="utf-8") as f:
+                    f.write(ai_response)
+                    
+                print(f"[+] AI successfully updated the strategy: {STRATEGY_LOG}")
+                print("\n=== NEW AI STRATEGY RULES ===")
+                print(ai_response)
+                print("=============================\n")
+
+                with open(VIDEO_HISTORY_JSON, "w", encoding="utf-8") as f:
+                    json.dump([], f)
+                print("Video history JSON has been wiped clean for the next cycle.")
+                
+            except requests.exceptions.ConnectionError:
+                print("[!] ERROR: Could not connect to Ollama.")
+            except Exception as e:
+                print(f"[!] An error occurred during AI analysis: {e}")
+
+        print(f"[!] ERROR: All models exhausted. Could not generate a stat report.")
+        return None
 
     def _fetch_current_stats(self):
         print("\n[*] Starting stealth scrape of video statistics...")

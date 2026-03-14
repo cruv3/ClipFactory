@@ -31,6 +31,7 @@ async def main_loop():
     print("🚀 VIRAL VIDEO FACTORY STARTED")
     print(f"[*] Post Interval: {VIDEO_INTERVAL_HOURS}h")
     print(f"[*] Cleanup every: {CLEAN_INTERVAL_HOURS}h")
+    print(f"[*] Report every: {REPORT_INTERVAL_HOURS}h")
     print("="*40 + "\n")
 
     last_clean_time = time.time()

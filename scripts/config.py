@@ -29,6 +29,8 @@ OLLAMA_BASE_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
 OLLAMA_GENERATE_URL = f"{OLLAMA_BASE_URL}/api/generate"
 OLLAMA_PULL_URL = f"{OLLAMA_BASE_URL}/api/pull"
 OLLAMA_TAGS_URL = f"{OLLAMA_BASE_URL}/api/tags"
+WORD_MIN = int(os.getenv("WORD_MIN", 150))
+WORD_MAX = int(os.getenv("WORD_MAX", 250))
 
 KOKORO_URL = os.getenv("KOKORO_URL", "http://192.168.2.124:8880/v1/audio/speech")
 KOKORO_URL_WEB = KOKORO_URL.replace("/v1/audio/speech", "/web/")

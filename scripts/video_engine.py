@@ -211,8 +211,17 @@ class VideoEngine:
         return text_clips
 
     def _download_and_slice(self, folder_name, search_query):
-        forbidden_stuff = " -facecam -streamer -reaction -shorts"
-        full_query = f"{search_query} {forbidden_stuff} no commentary cinematic"
+        clean_query = search_query.lower().replace("4k", "").replace("1080p", "").replace("no commentary", "").strip()
+        core_theme = " ".join(clean_query.split()[:3])
+
+        queries_to_try = [
+            f"{search_query} -facecam -streamer -reaction -shorts no commentary cinematic",
+            f"{search_query} -facecam -streamer -shorts no commentary",
+            f"{clean_query} gameplay no commentary -shorts -facecam",
+            f"{core_theme} gameplay no commentary -shorts -facecam",
+            "minecraft parkour gameplay no commentary 4k -shorts"
+        ]
+
         print(f"\n[!] Inventory for '{folder_name}' empty. Searching YouTube: {search_query}")
         
         category_dir = os.path.join(VIDEO_CHUNKS_DIR, folder_name)
@@ -226,34 +235,35 @@ class VideoEngine:
             'quiet': True,
             'noprogress': True,
             'noplaylist': True,
-            'retries': 10,
-            'fragment_retries': 10,
-            'match_filter': yt_dlp.utils.match_filter_func("duration > 600 & height >= 1080"),
+            'retries': 3,
+            'fragment_retries': 3,
+            'ignoreerrors': True,
+            'max_downloads': 1,
+            'match_filter': yt_dlp.utils.match_filter_func("duration > 480 & height >= 1080 & !is_live"),
         }
 
-        try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.extract_info(f"ytsearch1:{full_query}", download=True)
-        except Exception as e:
-            print(f"[!] yt-dlp Error during search: {e}")
-
-        if not os.path.exists(temp_video):
-            print(f"[!] WARNING: Download failed for '{full_query}'. Trying safe fallback...")
-            fallback_query = "minecraft parkour gameplay no commentary 4k -shorts"
-            
+        download_success = False
+        for i, query in enumerate(queries_to_try):
+            print(f"[*] Search Attempt {i+1}/4: '{query}'")
             try:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    ydl.extract_info(f"ytsearch1:{fallback_query}", download=True)
+                    ydl.extract_info(f"ytsearch10:{query}", download=True)
             except Exception:
                 pass
 
-            if not os.path.exists(temp_video):
-                print("[!] CRITICAL: Even fallback download failed.")
-                return False
-            
-        print(f"[+] Download complete. Slicing into 90s chunks...")
+            if os.path.exists(temp_video):
+                print(f"[+] Download successful on attempt {i+1}!")
+                download_success = True
+                break
+            else:
+                print(f"[-] Attempt {i+1} failed to find a valid video.")
+
+        if not download_success:
+            print("[!] CRITICAL: All fallback attempts failed. Check internet or update yt-dlp.")
+            return False
+
+        print(f"[+] Slicing into 90s chunks...")
         
-        # Chunks landen direkt im Kategorie-Ordner
         chunk_pattern = os.path.join(category_dir, "chunk_%03d.mp4")
         ffmpeg_command = f'ffmpeg -y -ss 00:00:10 -i "{temp_video}" -c copy -map 0 -segment_time 00:01:30 -f segment "{chunk_pattern}"'
         
@@ -290,7 +300,6 @@ class VideoEngine:
 if __name__ == "__main__":
     import dataclasses
 
-    # Wir bauen eine Mock-Klasse, damit wir StoryStrategy nicht importieren müssen
     @dataclasses.dataclass
     class MockStrategy:
         folder_name: str
@@ -298,13 +307,11 @@ if __name__ == "__main__":
         output_dir: str
 
     strategy = MockStrategy(
-        folder_name="minecraft",
-        search_query="minecraft parkour no copyright gameplay",
+        folder_name="gta5_stunts",
+        search_query="gta 5 spiderman mod mega ramp no commentary 4k", 
         output_dir="data/test_output"
     )
 
-    # 1. Wir simulieren Whisper Word-Timestamps
-    # Normalerweise kämen diese von deinem Transcriber-Skript
     mock_word_timestamps = [
         {"word": "THIS", "start": 0.0, "end": 0.5},
         {"word": "IS", "start": 0.5, "end": 0.8},
@@ -315,8 +322,7 @@ if __name__ == "__main__":
         {"word": "FACTORYRESETTTING", "start": 2.0, "end": 2.8},
     ]
 
-    # Pfad zu einer Test-Audio (Du musst eine kurze .wav oder .mp3 in data/test_audio.mp3 legen)
-    test_audio = "data/test/test_audio.wav" 
+    test_audio = "data/test_run_001/narrator.wav" 
 
     if not os.path.exists(test_audio):
         print(f"[!] TEST ABORTED: Please place a file at {test_audio}")

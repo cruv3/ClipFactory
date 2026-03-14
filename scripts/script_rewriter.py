@@ -2,7 +2,7 @@ import requests
 import re
 import os
 
-from config import OLLAMA_GENERATE_URL, STRATEGY_LOG, OLLAMA_MODEL, OLLAMA_MODEL_BACKUP
+from config import OLLAMA_GENERATE_URL, STRATEGY_LOG, OLLAMA_MODEL, OLLAMA_MODEL_BACKUP, WORD_MAX, WORD_MIN
 from ollama_provider import OllamaProvider
 
 class ScriptRewriter(OllamaProvider):
@@ -42,7 +42,7 @@ class ScriptRewriter(OllamaProvider):
                 You are a master viral TikTok storyteller. Your task is to rewrite the premise into a PUNCHY, highly engaging script for a SHORT-FORM video (approx. 70-90 seconds).
                 
                 CRITICAL LENGTH LIMITS: 
-                - The script MUST be roughly between 120 and 180 words.
+                - The script MUST be roughly between {WORD_MIN} and {WORD_MAX} words.
                 - Keep sentences short, punchy, and easy to speak. No long, complex paragraphs.
                 - Cut the fluff. Get straight to the point.
 
@@ -102,12 +102,12 @@ class ScriptRewriter(OllamaProvider):
                     # --- LÄNGEN-CHECK ---
                     word_count = len(script.split())
                     
-                    if word_count < 100:
+                    if word_count < WORD_MIN:
                         print(f"[!] Script too short ({word_count} words). Rejecting...")
                         info_message = f"CRITICAL FEEDBACK ON PREVIOUS ATTEMPT: Your last response was ONLY {word_count} words long. This is WAY TOO SHORT! You MUST write at least 130 words to tell a proper story. Expand the narrative!"
                         continue
 
-                    elif word_count > 200:
+                    elif word_count > WORD_MAX:
                         print(f"[!] Script too long ({word_count} words). Rejecting...")
                         info_message = f"CRITICAL FEEDBACK ON PREVIOUS ATTEMPT: Your last response was {word_count} words long. This is TOO LONG! You MUST condense the story and keep it STRICTLY under 160 words, but ensure it still has a proper ending/cliffhanger!"
                         continue
@@ -170,19 +170,17 @@ if __name__ == "__main__":
         tags="#aita #storytime #drama"
     )
 
-    # 2. Eine typische, rohe Reddit-Story (ca. 75 Wörter)
-    # Perfekt, um zu sehen, ob Ollama sie wie gewünscht auf über 100 Wörter streckt!
+    # Eine typische, rohe Reddit-Story (ca. 100 Wörter)
     raw_reddit_story = """
-    My (25F) boyfriend (27M) of 3 years proposed to me yesterday in a fancy restaurant. 
-    Instead of a ring box, he slid a printed piece of paper across the table with a QR code on it. 
-    When I scanned it, it led to a picture of an NFT of a ring. 
-    He said it's the future and actual diamonds are a scam. 
-    I got so mad I threw my drink in his face, walked out, and took an Uber home. 
-    Now his family is texting me saying I'm ungrateful. Am I?
+    My (25F) boyfriend (27M) of 3 years proposed to me yesterday in a ridiculously expensive restaurant. 
+    Instead of a velvet ring box, he proudly slid a printed piece of paper across the table with a QR code on it. 
+    When I scanned it, it led to a pixelated picture of an NFT of a ring. 
+    He smugly said it's the future and actual diamonds are a total scam. 
+    I got so blindingly mad I threw my cold drink in his face, walked out, and took an Uber home. 
+    Now his entire family is texting me saying I'm ungrateful. Am I?
     """
-
+    
     # 3. Wir starten den Rewriter 
-    # TIPP: Wir übergeben hier direkt ai_temp=0.6, um die Halluzinationen zu killen!
     rewriter = ScriptRewriter(ai_temp=0.6, ai_top_p=0.9)
     
     print("\n[*] Starting ScriptRewriter Test...")
