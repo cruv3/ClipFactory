@@ -265,7 +265,7 @@ class VideoEngine:
         print(f"[+] Slicing into 90s chunks...")
         
         chunk_pattern = os.path.join(category_dir, "chunk_%03d.mp4")
-        ffmpeg_command = f'ffmpeg -y -ss 00:00:10 -i "{temp_video}" -c copy -map 0 -segment_time 00:01:30 -f segment "{chunk_pattern}"'
+        ffmpeg_command = f'ffmpeg -y -ss 00:01:30 -i "{temp_video}" -c copy -map 0 -segment_time 00:01:30 -f segment "{chunk_pattern}"'
         
         try:
             subprocess.run(ffmpeg_command, check=True, shell=True)
