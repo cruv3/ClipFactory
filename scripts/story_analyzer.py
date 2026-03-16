@@ -60,7 +60,7 @@ class StoryAnalyzer(OllamaProvider):
            - Create a string of 6-8 high-performance hashtags.
            - Mix broad tags (#shorts, #storytime) with niche tags (#redditstories, #aita, #datingfails).
            - Always include #shorts and #reddit. 
-        
+
         Return ONLY a raw JSON object. Follow this exact structure:
         {{
             "voice": "af_bella",
@@ -115,10 +115,12 @@ class StoryAnalyzer(OllamaProvider):
                 
                 unique_id = f"{category}_{generate_story_id()}"
                 final_path = os.path.join(DATA_DIR, category, unique_id)
-
+                
+                clamped_speed = min(2.0, max(1.0, parsed_json.get("voice_speed", 1.2)))
+                
                 strategy = StoryStrategy(
                     voice=parsed_json.get("voice", "am_onyx"),
-                    voice_speed=parsed_json.get("voice_speed", 1.2),
+                    voice_speed=clamped_speed,
                     hook_style=parsed_json.get("hook_style", "Shocking"),
                     folder_name=category,
                     output_dir=final_path,
