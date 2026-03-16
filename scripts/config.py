@@ -57,4 +57,3 @@ YOUTUBE_SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
 
 # Fonts
 FONT_PATH = os.path.join(BASE_PATH, "fonts", "SourGummy_SemiExpanded-ExtraBoldItalic.ttf").replace("\\", "/")
-print(FONT_PATH)

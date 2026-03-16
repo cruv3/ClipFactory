@@ -15,20 +15,19 @@ class VoiceEngine:
         self.model_verified = self.verify_kokoro()
         self.model = whisper.load_model("base")
 
-    def generate_audio(self, text, strategy, speed=1.0):
+    def generate_audio(self, text, strategy):
         os.makedirs(strategy.output_dir, exist_ok=True)
         
         filename = "narrator.wav"
         full_output_path = os.path.join(strategy.output_dir, filename)
         
-        print(f"[*] Sending text to Kokoro (Voice: {strategy.voice}, Speed: {speed})...")
-        
+        print(f"[*] Sending text to Kokoro (Voice: {strategy.voice}, Speed: {strategy.voice_speed })...")
         payload = {
             "model": "kokoro",
             "input": text,
             "voice": strategy.voice,
             "response_format": "wav",
-            "speed": speed 
+            "speed": max(1.0, strategy.voice_speed),
         }
         
         try:
@@ -116,6 +115,7 @@ if __name__ == "__main__":
         
     test_strategy = MockStrategy(
         voice="am_onyx",
+        voice_speed=1.25,
         hook_style="Creepy",
         folder_name="creepy_stories",
         search_query="dark forest drone 4k no commentary",

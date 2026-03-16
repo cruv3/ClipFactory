@@ -2,12 +2,10 @@ import json
 import requests
 import os
 
-from utils import StoryStrategy
-from utils import generate_story_id
-# WICHTIG: Fallback-Modelle in config.py definieren!
+from utils import StoryStrategy, generate_story_id, get_trending_backgrounds
 from config import (
     OLLAMA_GENERATE_URL, DATA_DIR, 
-    OLLAMA_MODEL, OLLAMA_MODEL_BACKUP
+    OLLAMA_MODEL, OLLAMA_MODEL_BACKUP, STRATEGY_LOG
 )
 from ollama_provider import OllamaProvider
 
@@ -24,42 +22,58 @@ class StoryAnalyzer(OllamaProvider):
         self.ai_top_p = ai_top_p 
     
     def analyzer(self, story_text):      
+        strategy_rules = ""
+
+        if os.path.exists(STRATEGY_LOG):
+            with open(STRATEGY_LOG, "r", encoding="utf-8") as f:
+                strategy_rules = f.read().strip()
+
+        live_trends = get_trending_backgrounds()
+        trends_text = ", ".join(live_trends) if live_trends else ""
+
         prompt = f"""
-        Analyze this story and decide the visual and vocal strategy for a VIRAL TikTok/Shorts video.
+        Analyze this story and decide the visual, vocal, and musical strategy for a VIRAL TikTok/Shorts video.
         
         STORY: "{story_text}"
 
-        TASK:
-        1. Select a Voice: Choose from {self.available_voices}. Pick a voice that matches the tone (e.g., deep for scary, energetic for funny/drama).
-        
-        2. Background Strategy (CRITICAL FOR RETENTION):
-           We are making viral "Reddit-style" stories. We DO NOT want cinematic or realistic backgrounds (like cafes or people talking).
-           We ONLY use highly stimulating "Brainrot", ASMR, or visually satisfying gameplay to keep viewer retention at 100%.
-           
-           Because you are an advanced AI, you have CREATIVE FREEDOM to invent the perfect background theme!
-           
-           RULES FOR YOUR CHOICE:
-           - The 'folder_name' should be a short, categorized name (e.g., 'gta5_stunts', 'satisfying_sand', 'beamng_crashes', 'minecraft_parkour', 'funny_pets').
-           - Create a highly specific and creative 'search_query' for YouTube.
-           - CRITICAL: You MUST append "no commentary" and "4k" (or "1080p") to the 'search_query' so our scraper finds clean footage.
-           - CRITICAL: NEVER search for the actual content of the story. Only search for the background footage.
-           
-           EXAMPLES OF GOOD SEARCH QUERIES:
-           - "gta 5 spiderman mod mega ramp no commentary 4k"
-           - "satisfying kinetic sand ASMR slicing no commentary"
-           - "beamng drive insane crashes no commentary 1080p"
-           - "funny cats doing weird things background loop 4k"
+        CHANNEL RULES (BASED ON RECENT DATA):
+        {strategy_rules}
 
-        Return ONLY a raw JSON object (no markdown, no backticks, no introduction). Follow this exact structure:
+        CURRENT TRENDS FOR INSPIRATION: {trends_text}
+
+        TASK:
+        1. Select a Voice: Choose from {self.available_voices}. Match the emotion.
+        
+        2. Background Video Strategy:
+           - We ONLY use stimulating ASMR or gameplay (Brainrot style).
+           - Create a 'folder_name' and a specific 'search_query' (Append "no commentary" and "4k").
+
+        3. Action Words: Identify high-impact Power Words for visual shakes.
+
+        4. Background Music Strategy (NEW):
+           - Define the mood (e.g., tense, sad, upbeat, suspicious).
+           - Create a 'bg_music_query' for YouTube. 
+           - CRITICAL: You MUST include "no copyright" or "royalty free" in the query.
+           - Examples: "creepy horror ambient no copyright", "lofi chill hip hop royalty free", "sad cinematic piano no copyright".
+
+        5. Shorts Tagging Strategy:
+           - Create a string of 6-8 high-performance hashtags.
+           - Mix broad tags (#shorts, #storytime) with niche tags (#redditstories, #aita, #datingfails).
+           - Always include #shorts and #reddit. 
+        
+        Return ONLY a raw JSON object. Follow this exact structure:
         {{
             "voice": "af_bella",
+            "voice_speed": 1.25,
             "folder_name": "beamng_crashes",
-            "search_query": "beamng drive insane cliff crashes no commentary 4k",
-            "reason": "The story is chaotic and destructive, watching car crashes satisfies that fast-paced energy.",
+            "search_query": "beamng drive cliff crashes no commentary 4k",
+            "bg_music_query": "suspenseful dark background music no copyright",
+            "reason": "The story is chaotic and destructive.",
             "hook_style": "Shocking",
             "caption": "Wait until the end... 🚩",
-            "description": "Crazy storytime! #reddit #storytime #fyp",
-            "tags": "#redditstories #drama #storytime"
+            "description": "Crazy storytime! #reddit #storytime",
+            "tags": "#shorts #redditstories #storytime #datingfail #aita #drama #tinder",
+            "action_words": ["STEAK", "WINDOW", "BATHROOM"]
         }}
         """
 
@@ -97,7 +111,6 @@ class StoryAnalyzer(OllamaProvider):
                     parsed_json = json.loads(raw_content[start:end])
 
                 category = parsed_json.get("folder_name", "dynamic_stories")
-                # Leerzeichen in Ordnernamen durch Unterstriche ersetzen zur Sicherheit
                 category = category.replace(" ", "_").lower() 
                 
                 unique_id = f"{category}_{generate_story_id()}"
@@ -105,6 +118,7 @@ class StoryAnalyzer(OllamaProvider):
 
                 strategy = StoryStrategy(
                     voice=parsed_json.get("voice", "am_onyx"),
+                    voice_speed=parsed_json.get("voice_speed", 1.2),
                     hook_style=parsed_json.get("hook_style", "Shocking"),
                     folder_name=category,
                     output_dir=final_path,
@@ -112,7 +126,9 @@ class StoryAnalyzer(OllamaProvider):
                     reason=parsed_json.get("reason", ""),
                     caption=parsed_json.get("caption", "You won't believe this... #storytime"),
                     description=parsed_json.get("description", "A crazy story that will leave you speechless. #reddit #shorts"),
-                    tags=parsed_json.get("tags", "#reddit #storytime #fyp")
+                    tags=parsed_json.get("tags", "#reddit #storytime #fyp"),
+                    action_words=parsed_json.get("action_words", ["WTF", "CRAZY", "SHOCK"]),
+                    bg_music_query=parsed_json.get("bg_music_query", "ambient background music no copyright")
                 )
 
                 print("\n" + "="*40)

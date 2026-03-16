@@ -7,7 +7,7 @@ import asyncio
 
 from instagrapi import Client
 from playwright.async_api import async_playwright
-
+from moviepy.editor import VideoFileClip
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
@@ -15,7 +15,7 @@ from googleapiclient.http import MediaFileUpload
 
 from config import (
     IG_USERNAME, IG_PASSWORD, 
-    TIKTOK_COOKIES, TIKTOK_USERNAME, TIKTOK_SESSION_ID,
+    TIKTOK_COOKIES, TIKTOK_USERNAME,
     YOUTUBE_CLIENT_SECRETS, YOUTUBE_TOKEN_PICKLE, YOUTUBE_SCOPES, VIDEO_HISTORY_JSON, IG_SETTINGS_FILE
 )
 
@@ -55,7 +55,14 @@ class VideoUploader:
 
         return results
 
-    def _log_video_to_history(self, uploaded_url, strategy):
+    def _get_video_duration(self, video_path):
+            try:
+                with VideoFileClip(video_path) as video:
+                    return int(video.duration)
+            except:
+                return 0
+            
+    def _log_video_to_history(self, uploaded_url, strategy, platform, video_path):
         if not uploaded_url:
             return
 
@@ -66,28 +73,33 @@ class VideoUploader:
             try:
                 with open(history_file, "r", encoding="utf-8") as f:
                     history = json.load(f)
-            except (json.JSONDecodeError, IOError):
+            except:
                 history = []
 
+        # New Enhanced Entry
         new_entry = {
             "video_id": f"vid_{int(time.time())}",
+            "platform": platform,
             "url": uploaded_url,
             "subreddit": strategy.folder_name,
             "voice": strategy.voice,
+            "voice_speed": strategy.voice_speed,
             "hook_style": strategy.hook_style,
+            "bg_music": strategy.bg_music_query,
+            "bg_video_query": strategy.search_query,
+            "duration": self._get_video_duration(video_path),
             "caption": strategy.caption,
+            "tags": strategy.tags,
+            "action_words": strategy.action_words,
+            "posted_at": time.strftime("%Y-%m-%d %H:%M:%S"),
             "views": 0,
             "likes": 0,
             "comments": 0,
         }
 
         history.append(new_entry)
-        try:
-            with open(history_file, "w", encoding="utf-8") as f:
-                json.dump(history, f, indent=4, ensure_ascii=False)
-            print(f"[+] Video-Historie updated: {history_file}")
-        except Exception as e:
-            print(f"[!] Error writing to {history_file}: {e}")
+        with open(history_file, "w", encoding="utf-8") as f:
+            json.dump(history, f, indent=4, ensure_ascii=False)
 
     def _upload_to_instagram(self, video_path, caption):
         print(f"\n[*] Starting Instagram upload for: {video_path}")

@@ -9,6 +9,7 @@ from video_engine import VideoEngine
 from video_uploader import VideoUploader
 from telegram_bot import TelegramApproval
 from stat_reporter import StatReporter
+from music_engine import MusicEngine
 from utils import clean_data_folder
 
 from config import (
@@ -26,6 +27,7 @@ async def main_loop():
     uploader = VideoUploader()
     tg_bot = TelegramApproval()
     reporter = StatReporter()
+    music_eng = MusicEngine()
 
     print("\n" + "="*40)
     print("🚀 VIRAL VIDEO FACTORY STARTED")
@@ -79,16 +81,19 @@ async def main_loop():
             # 5. Voice Generation
             audio_path = voice_eng.generate_audio(
                 text=script, 
-                strategy=strategy
-            )   
+                strategy=strategy,
+            )
+
             if not audio_path: continue
             word_timestamps = voice_eng.get_word_timestamps(audio_path)
 
             # 6. Video Assembly
+            bg_music_path = music_eng.fetch_background_music(strategy)
             video_path = video_eng.create_video(
                 word_timestamps=word_timestamps,
                 audio_path=audio_path,
-                strategy=strategy
+                strategy=strategy,
+                bg_music_path=bg_music_path
             ) 
             if not video_path:
                 print("[!] Video creation failed.")

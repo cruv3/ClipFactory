@@ -3,7 +3,6 @@ import os
 import time
 import requests
 import yt_dlp
-from datetime import datetime
 
 from config import (
     OLLAMA_MODEL, OLLAMA_MODEL_BACKUP ,OLLAMA_GENERATE_URL, VIDEO_HISTORY_JSON, STRATEGY_LOG
@@ -28,14 +27,23 @@ class StatReporter(OllamaProvider):
             stats_text += f"- URL: {v.get('url', 'N/A')} | Subreddit: {v['subreddit']} | Voice: {v['voice']} | Hook: {v['hook_style']} -> VIEWS: {v['views']}, LIKES: {v['likes']}\n"
 
         prompt = f"""
-        You are the Lead Data Analyst for a highly successful Reddit Story channel on TikTok, YouTube Shorts and Instagram-Reels.
-        Here are our current video statistics:
+        You are the Lead Data Analyst and Viral Content Strategist for a highly successful Reddit Story channel on TikTok, YouTube Shorts, and Instagram Reels.
         
+        Here is the performance data of our recent videos:
         {stats_text}
         
-        Write 3 extremely short, precise rules for future videos based strictly on this data.
-        Analyze which combination of Subreddit, Voice, and Hook brings the most views.
-        Do NOT write any intro or outro. Output only the 3 rules.
+        Analyze this data deeply to find patterns. Structure your response EXACTLY using the following sections:
+
+        ### 1. Key Insights & Reasoning
+        Analyze which combination of Subreddit, Voice, and Hook generated the highest views and engagement (Likes to Views ratio). 
+        Explain WHY you think these specific combinations worked or failed. Base your reasoning on short-form video audience psychology (e.g., attention spans, emotional triggers).
+
+        ### 2. Strategic Recommendations
+        Based on your insights, suggest 2 or 3 new strategic combinations or slight variations we should test in the next batch of videos to maximize viral potential.
+
+        ### 3. ACTIONABLE RULES FOR NEXT BATCH
+        Write 3 to 5 strict, precise rules based strictly on this data. These rules will be fed directly into our AI Video Generator. 
+        Keep these rules direct and commanding (e.g., "Always pair Voice X with Subreddit Y", "Avoid Hook style Z").
         """
         
         print("[*] 🧠 Ollama is analyzing the stats and generating a strategy...")
@@ -69,9 +77,11 @@ class StatReporter(OllamaProvider):
                 print(ai_response)
                 print("=============================\n")
 
-                with open(VIDEO_HISTORY_JSON, "w", encoding="utf-8") as f:
-                    json.dump([], f)
-                print("Video history JSON has been wiped clean for the next cycle.")
+                if response.status_code == 200:
+                    with open(VIDEO_HISTORY_JSON, "w", encoding="utf-8") as f:
+                        json.dump([], f)
+                    print("Video history JSON has been wiped clean for the next cycle.")
+                    return
                 
             except requests.exceptions.ConnectionError:
                 print("[!] ERROR: Could not connect to Ollama.")
@@ -140,3 +150,9 @@ class StatReporter(OllamaProvider):
         except Exception as e:
             print(f"[!] Error scraping {url}: {e}")
             return {"views": 0, "likes": 0, "comments": 0}
+
+if __name__ == "__main__":
+    reporter = StatReporter()
+    
+    # Run the analysis cycle
+    reporter.let_ai_analyze()

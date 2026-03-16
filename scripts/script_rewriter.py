@@ -39,20 +39,36 @@ class ScriptRewriter(OllamaProvider):
 
                 prompt = f"""
                 {info_message}
-                You are a master viral TikTok storyteller. Your task is to rewrite the premise into a PUNCHY, highly engaging script for a SHORT-FORM video (approx. 70-90 seconds).
+                You are a master viral TikTok storyteller. Your task is to rewrite the premise into a PUNCHY, highly engaging script for a SHORT-FORM video.
                 
                 CRITICAL LENGTH LIMITS: 
-                - The script MUST be roughly between {WORD_MIN} and {WORD_MAX} words.
+                - The script MUST be exactly between {WORD_MIN} and {WORD_MAX} words.
                 - Keep sentences short, punchy, and easy to speak. No long, complex paragraphs.
-                - Cut the fluff. Get straight to the point.
 
-                NARRATIVE ARCHITECTURE:
-                1. THE HOOK (First 3 seconds): A devastating, terrifying, or highly controversial first sentence (Style: {strategy.hook_style}).
-                2. THE ESCALATION: Build tension immediately. Give 1-2 sensory details (like a sound or a cold sweat), but do not over-explain.
-                3. THE FINAL BLOW (Cliffhanger): End abruptly with a shocking revelation or a thought-provoking question that makes the viewer want to re-watch or comment.
+                NARRATIVE ARCHITECTURE YOU MUST FOLLOW EXACTLY:
+                
+                1. THE HOOK (Sentence 1): 
+                   Start immediately with the conflict. DO NOT introduce yourself (No "Hi, I am 25"). 
+                   Style: {strategy.hook_style}. 
+                   
+                2. THE SETUP (Sentences 2-3): 
+                   Build tension immediately. Give context extremely fast. Who, what, where.
+                   
+                3. THE MID-STORY HOOK (Sentence 4) - CRITICAL FOR RETENTION:
+                   Right when the viewer thinks they know the story, you MUST hit them with a "Pattern Interrupt" sentence to keep them watching.
+                   Depending on the tone, use phrases like:
+                   - "But wait, it gets so much worse."
+                   - "I thought that was the craziest part, but I was wrong."
+                   - "And that is when the real nightmare started."
+                   
+                4. THE ESCALATION (Rest of the script):
+                   Deliver the climax or the plot twist. No boring details, only the juicy drama.
+                   
+                5. THE FINAL BLOW (Last Sentence):
+                   End abruptly with a thought-provoking question to drive comments. (e.g., "Am I the jerk?", "Did I go too far?")
 
                 STRICT STYLE RULES:
-                - Output ONLY the spoken script. No titles, no formatting, no emojis.
+                - Output ONLY the spoken script. No titles, no formatting, no emojis, no markdown.
                 - NO conversational AI intros (e.g., "Here is your script").
                 - Start immediately with the hook.
                 - Use "I" (first-person perspective).
