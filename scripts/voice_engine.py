@@ -21,13 +21,14 @@ class VoiceEngine:
         filename = "narrator.wav"
         full_output_path = os.path.join(strategy.output_dir, filename)
         
-        print(f"[*] Sending text to Kokoro (Voice: {strategy.voice}, Speed: {strategy.voice_speed })...")
+        clamped_speed = min(2.0, max(1.0, strategy.voice_speed))
+        print(f"[*] Sending text to Kokoro (Voice: {strategy.voice}, Speed: {clamped_speed})...")
         payload = {
             "model": "kokoro",
             "input": text,
             "voice": strategy.voice,
             "response_format": "wav",
-            "speed": max(1.0, strategy.voice_speed),
+            "speed": clamped_speed,
         }
         
         try:

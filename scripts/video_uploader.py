@@ -33,17 +33,17 @@ class VideoUploader:
         # Instagram
         ig_url = self._upload_to_instagram(video_path, caption)
         results["Instagram"] = ig_url if ig_url else "❌ Failed"
-        if ig_url: self._log_video_to_history(ig_url, strategy)
+        if ig_url: self._log_video_to_history(ig_url, strategy, "Instagram", video_path)
         
         # TikTok
         tk_url = await self._upload_to_tiktok(video_path, caption)
         results["TikTok"] = tk_url if tk_url else "❌ Failed"
-        if tk_url: self._log_video_to_history(tk_url, strategy)
+        if tk_url: self._log_video_to_history(tk_url, strategy, "TikTok", video_path)
         
         # YouTube
         yt_url = self._upload_to_youtube(video_path, yt_title, caption, final_tags)
         results["YouTube"] = yt_url if yt_url else "❌ Failed"
-        if yt_url: self._log_video_to_history(yt_url, strategy)
+        if yt_url: self._log_video_to_history(yt_url, strategy, "Youtube", video_path)
 
         temp_run_dir = os.path.dirname(video_path)
         if os.path.exists(temp_run_dir) and "__" in temp_run_dir:
