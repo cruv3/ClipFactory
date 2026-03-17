@@ -3,6 +3,7 @@ import os
 import whisper
 import time
 import warnings
+import re
 
 warnings.filterwarnings("ignore", category=UserWarning)
 os.environ["TQDM_DISABLE"] = "1"
@@ -17,7 +18,7 @@ class VoiceEngine:
 
     def generate_audio(self, text, strategy):
         os.makedirs(strategy.output_dir, exist_ok=True)
-        
+        safe_text = self._sanitize_text(text)
         filename = "narrator.wav"
         full_output_path = os.path.join(strategy.output_dir, filename)
         
@@ -25,7 +26,7 @@ class VoiceEngine:
         print(f"[*] Sending text to Kokoro (Voice: {strategy.voice}, Speed: {clamped_speed})...")
         payload = {
             "model": "kokoro",
-            "input": text,
+            "input": safe_text,
             "voice": strategy.voice,
             "response_format": "wav",
             "speed": clamped_speed,
@@ -76,6 +77,17 @@ class VoiceEngine:
         except Exception as e:
             print(f"[!] Unexpected TTS Check Error: {e}")
             return False
+        
+    @staticmethod
+    def _sanitize_text(text):
+        """
+        Wandelt komplett großgeschriebene Wörter (ab 3 Buchstaben) in normale 
+        Schreibweise um, damit die TTS sie als Wort und nicht als Buchstabensalat liest.
+        Beispiel: "BROKENHEARTED" -> "Brokenhearted"
+        """
+        def replace_caps(match):
+            return match.group(0).capitalize() 
+        return re.sub(r'\b[A-Z]{3,}\b', replace_caps, text)
 
 # --- TEST RUN ---
 if __name__ == "__main__":

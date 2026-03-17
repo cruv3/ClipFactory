@@ -28,7 +28,7 @@ else:
 
 class VideoEngine:
     def __init__(self, is_test=False):
-        self.card_width = 900
+        self.card_width = 840
         
         self.bg_color_rgb = (0, 18, 43)
         self.highlight_color = "#FFDD00"
@@ -81,8 +81,7 @@ class VideoEngine:
         card_draw = ImageDraw.Draw(card_img)
         c_x, c_y = self.shadow_pad // 2, self.shadow_pad // 2
 
-        border_size = 1
-        
+        border_size = 1  
         card_draw.rounded_rectangle(
             [c_x - border_size, c_y - border_size, c_x + W, c_y + H], 
             radius=self.corner_radius, 
@@ -225,7 +224,7 @@ class VideoEngine:
 
         for i, wd in enumerate(word_data):
             txt_str = wd["word"]
-            tw = TextClip(txt_str, fontsize=self.font_size, font=FONT_PATH).w # Nutzt self.font_size (48)
+            tw = TextClip(txt_str, fontsize=self.font_size, font=FONT_PATH).w 
             
             if x + tw > max_w:
                 x = 0
@@ -237,9 +236,10 @@ class VideoEngine:
             base = TextClip(txt_str, fontsize=self.font_size, color="white", font=FONT_PATH)\
                    .set_start(line_t).set_duration(max(0.1, duration - line_t)).set_position((x, y))
             
-            end_t = word_data[i+1]["start"] if i+1 < len(word_data) else duration
+            word_duration = wd["end"] - wd["start"]
+            
             high = TextClip(txt_str, fontsize=self.font_size, color=self.highlight_color, font=FONT_PATH)\
-                   .set_start(wd["start"]).set_duration(max(0.1, end_t - wd["start"])).set_position((x, y))
+                   .set_start(wd["start"]).set_duration(max(0.1, word_duration + 0.1)).set_position((x, y))
             
             clips.extend([base, high])
             wd["line"] = y // self.line_height
@@ -248,25 +248,33 @@ class VideoEngine:
         return clips, line_starts
     
     def _merge_script_with_timestamps(self, original_script, word_data):
-        script_words = original_script.split()
+        """
+        Smarter Merge: Verhindert Desync, indem es die Wörter abgleicht.
+        """
         merged_data = []
-        min_len = min(len(script_words), len(word_data))
+        script_words = original_script.split()
+        s_idx = 0
         
-        for i in range(min_len):
-            merged_data.append({
-                "word": script_words[i],
-                "start": word_data[i]["start"],
-                "end": word_data[i]["end"]
-            })
+        for wd in word_data:
+            w_clean = ''.join(e for e in wd["word"] if e.isalnum()).lower()
             
-        last_end = word_data[-1]["end"] if word_data else 0
-        for i in range(min_len, len(script_words)):
+            if not w_clean:
+                display_word = wd["word"].strip()
+            elif s_idx < len(script_words):
+                s_clean = ''.join(e for e in script_words[s_idx] if e.isalnum()).lower()
+                if w_clean == s_clean or w_clean in s_clean or s_clean in w_clean:
+                    display_word = script_words[s_idx]
+                    s_idx += 1
+                else:
+                    display_word = wd["word"].strip().capitalize()
+            else:
+                display_word = wd["word"].strip().capitalize()
+                
             merged_data.append({
-                "word": script_words[i],
-                "start": last_end,
-                "end": last_end + 0.3
+                "word": display_word,
+                "start": wd["start"],
+                "end": wd["end"]
             })
-            last_end += 0.3
             
         return merged_data
 
@@ -292,7 +300,7 @@ class VideoEngine:
             ui_card = self._build_ui_card(merged_words, strategy, dur)
             if self.res_height < 1920: ui_card = ui_card.resize(self.res_height / 1920)
 
-            x_offset_left = 20
+            x_offset_left = 40
             final = CompositeVideoClip([video, ui_card.set_position((x_offset_left, 'center'))], 
                                       size=(self.res_width, self.res_height)).set_audio(audio)
 
@@ -359,4 +367,4 @@ if __name__ == "__main__":
     word_timestamp = v_eng.get_word_timestamps(audio_file)
 
     engine = VideoEngine(is_test=True)
-    engine.create_video(script, word_timestamp, strategy)
+    engine.create_video(script, word_timestamp, strategy, audio_file)
