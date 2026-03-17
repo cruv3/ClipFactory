@@ -74,6 +74,11 @@ class StoryAnalyzer(OllamaProvider):
            - Mix broad tags (#shorts, #storytime) with niche tags (#redditstories, #aita, #datingfails).
            - Always include #shorts and #reddit. 
 
+        6. Caption Strategy:
+           - Create a highly engaging, short caption (maximum 1 sentence or 10 words).
+           - DO NOT include any hashtags here (they belong strictly in the tags section).
+           - Keep it mysterious or funny to drive engagement.
+           
         Return ONLY a raw JSON object. Follow this exact structure:
         {{
             "voice": "af_bella",
@@ -83,7 +88,7 @@ class StoryAnalyzer(OllamaProvider):
             "bg_music_query": "suspenseful dark background music no copyright",
             "reason": "The story is chaotic and destructive.",
             "hook_style": "Shocking",
-            "caption": "Wait until the end... 🚩",
+            "caption": "Wait until the end...",
             "description": "Crazy storytime! #reddit #storytime",
             "tags": "#shorts #redditstories #storytime #datingfail #aita #drama #tinder",
             "action_words": ["STEAK", "WINDOW", "BATHROOM"]
@@ -139,7 +144,7 @@ class StoryAnalyzer(OllamaProvider):
                     output_dir=final_path,
                     search_query=parsed_json.get("search_query", "satisfying video no copyright 4k"),
                     reason=parsed_json.get("reason", ""),
-                    caption=parsed_json.get("caption", "You won't believe this... #storytime"),
+                    caption=parsed_json.get("caption", "You won't believe this..."),
                     description=parsed_json.get("description", "A crazy story that will leave you speechless. #reddit #shorts"),
                     tags=parsed_json.get("tags", "#reddit #storytime #fyp"),
                     action_words=parsed_json.get("action_words", ["WTF", "CRAZY", "SHOCK"]),
