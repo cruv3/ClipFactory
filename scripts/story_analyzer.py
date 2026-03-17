@@ -5,7 +5,7 @@ import os
 from utils import StoryStrategy, generate_story_id, get_trending_backgrounds
 from config import (
     OLLAMA_GENERATE_URL, DATA_DIR, 
-    OLLAMA_MODEL, OLLAMA_MODEL_BACKUP, STRATEGY_LOG
+    OLLAMA_MODEL, OLLAMA_MODEL_BACKUP, STRATEGY_LOG, VIDEO_HISTORY_JSON
 )
 from ollama_provider import OllamaProvider
 
@@ -31,6 +31,17 @@ class StoryAnalyzer(OllamaProvider):
         live_trends = get_trending_backgrounds()
         trends_text = ", ".join(live_trends) if live_trends else ""
 
+        last_search_query = ""
+
+        try:
+            with open(VIDEO_HISTORY_JSON, "r", encoding="utf-8") as f:
+                history = json.load(f)
+                if isinstance(history, list) and len(history) > 0:
+                    last_entry = history[-1]
+                    last_search_query = last_entry.get("bg_video_query", last_entry.get("bg_video_query", ""))
+        except Exception as e:
+            print(f"[!] Warning: Could not read {VIDEO_HISTORY_JSON}: {e}")
+
         prompt = f"""
         Analyze this story and decide the visual, vocal, and musical strategy for a VIRAL TikTok/Shorts video.
         
@@ -46,7 +57,9 @@ class StoryAnalyzer(OllamaProvider):
         
         2. Background Video Strategy:
            - We ONLY use stimulating ASMR or gameplay (Brainrot style).
-           - Create a 'folder_name' and a specific 'search_query' (Append "no commentary" and "4k").
+           - Create a 'folder_name' and a specific 'search_query' for youtube (Append "no commentary" and "4k").
+           - Avoid the last query: {last_search_query}
+
 
         3. Action Words: Identify high-impact Power Words for visual shakes.
 

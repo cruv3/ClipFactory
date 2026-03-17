@@ -79,20 +79,21 @@ async def main_loop():
             if not script: continue
 
             # 5. Voice Generation
-            audio_path = voice_eng.generate_audio(
+            voice_path = voice_eng.generate_audio(
                 text=script, 
                 strategy=strategy,
             )
 
-            if not audio_path: continue
-            word_timestamps = voice_eng.get_word_timestamps(audio_path)
+            if not voice_path: continue
+            word_timestamps = voice_eng.get_word_timestamps(voice_path)
 
             # 6. Video Assembly
             bg_music_path = music_eng.fetch_background_music(strategy)
             video_path = video_eng.create_video(
+                original_script=script,
                 word_timestamps=word_timestamps,
-                audio_path=audio_path,
                 strategy=strategy,
+                voice_path=voice_path,
                 bg_music_path=bg_music_path
             ) 
             if not video_path:

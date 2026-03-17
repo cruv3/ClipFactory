@@ -1,24 +1,25 @@
 import os
-import glob
-import subprocess
-import yt_dlp
-import platform
 import random
+import platform
+import numpy as np
+import string
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
 from moviepy.config import change_settings
-from moviepy.editor import VideoFileClip, AudioFileClip, TextClip, CompositeVideoClip, CompositeAudioClip
+from moviepy.editor import (
+    CompositeAudioClip, VideoFileClip, AudioFileClip, TextClip, CompositeVideoClip, 
+    ColorClip, ImageClip
+)
 import moviepy.video.fx.all as vfx
-import time
-import math
-import re
 
+# Workaround für PIL Versionen
 import PIL.Image
 if not hasattr(PIL.Image, 'ANTIALIAS'):
     PIL.Image.ANTIALIAS = PIL.Image.LANCZOS
 
-from config import (
-    VIDEO_CHUNKS_DIR, TEST_RUN, FONT_PATH
-)
+from config import TEST_RUN, FONT_PATH
+from utils import get_available_chunk, get_random_username
 
+# ImageMagick Setup
 if platform.system() == "Windows":
     IMAGEMAGICK_BINARY = r"C:\Program Files\ImageMagick-7.1.2-Q16-HDRI\magick.exe"
     change_settings({"IMAGEMAGICK_BINARY": IMAGEMAGICK_BINARY})
@@ -26,346 +27,299 @@ else:
     change_settings({"IMAGEMAGICK_BINARY": "/usr/bin/convert"})
 
 class VideoEngine:
-    def create_video(self, word_timestamps, audio_path, strategy, bg_music_path=None):
-        print("\n[*] Starting video production...")
-        os.makedirs(strategy.output_dir, exist_ok=True)
-
-        bg_video_path = self._get_available_chunk(strategy.folder_name, strategy.search_query)
-        if not bg_video_path:
-            print("[!] No background video available.")
-            return None
-
-        print(f"[*] Using background chunk: {bg_video_path}")
+    def __init__(self, is_test=False):
+        self.card_width = 900
         
-        try:      
-            audio_clip = AudioFileClip(audio_path)
-            final_audio = audio_clip
-            bg_music_clip = None
+        self.bg_color_rgb = (0, 18, 43)
+        self.highlight_color = "#FFDD00"
+        
+        self.line_height = 55 
+        self.font_size = 42       # Für den Haupt-Story-Text
+        self.caption_size = 48    # Startgröße für den Hook oben
+        
+        self.max_visible_lines = 8
+        self.corner_radius = 40
 
-            if bg_music_path and os.path.exists(bg_music_path):
-                print(f"[*] Mixing Voice with Background Music (10% volume)...")
-                try:
-                    bg_music_clip = AudioFileClip(bg_music_path)
-                    
-                    # 1. Musik-Lautstärke auf 10% drosseln
-                    bg_music_clip = bg_music_clip.volumex(0.1)
-                    
-                    if bg_music_clip.duration > audio_clip.duration:
-                        bg_music_clip = bg_music_clip.subclip(0, audio_clip.duration)
-                    
-                    # 3. Stimme und Musik übereinanderlegen
-                    final_audio = CompositeAudioClip([audio_clip, bg_music_clip])
-                except Exception as e:
-                    print(f"[!] Warnung: Konnte Hintergrundmusik nicht mischen. Error: {e}")
-                    final_audio = audio_clip # Fallback auf reine Stimme
-            else:
-                print("[-] Kein Background Music Path übergeben oder Datei fehlt. Render nur mit Stimme.")
+        self.shadow_color_rgba = (0, 0, 0, 160)
+        self.shadow_blur = 6                    
+        self.shadow_offset_x = 18               
+        self.shadow_offset_y = 18               
+        self.shadow_pad = 50
 
-            video_clip = VideoFileClip(bg_video_path)
+        # 2. RENDER SETTINGS
+        if is_test:
+            self.res_height = 854
+            self.fps = 10
+            self.preset = "ultrafast"
+            self.bitrate = "800k"
+        else:
+            self.res_height = 1920
+            self.fps = 30
+            self.preset = "slow" 
+            self.bitrate = "8000k"
+        
+        self.logger = "bar"
+        self.res_width = int((self.res_height * (9 / 16)) // 2) * 2
 
-            # --- ANTI-DUPLICATE HASH BUSTER ---
-            color_shift = random.uniform(0.98, 1.02)
-            video_clip = video_clip.fx(vfx.colorx, color_shift)
+    def _draw_card_background(self, height):
+        W, H = self.card_width, height
+        
+        full_w = W + self.shadow_pad + self.shadow_offset_x
+        full_h = H + self.shadow_pad + self.shadow_offset_y
+        
+        img = Image.new("RGBA", (full_w, full_h), (0, 0, 0, 0))
+
+        s_x = (self.shadow_pad // 2) + self.shadow_offset_x
+        s_y = (self.shadow_pad // 2) + self.shadow_offset_y
+        
+        shadow_img = Image.new("RGBA", (full_w, full_h), (0, 0, 0, 0))
+        shadow_draw = ImageDraw.Draw(shadow_img)
+        shadow_draw.rounded_rectangle([s_x, s_y, s_x + W, s_y + H], radius=self.corner_radius, fill=self.shadow_color_rgba)
+        shadow_img = shadow_img.filter(ImageFilter.GaussianBlur(self.shadow_blur))
+
+        card_img = Image.new("RGBA", (full_w, full_h), (0, 0, 0, 0))
+        card_draw = ImageDraw.Draw(card_img)
+        c_x, c_y = self.shadow_pad // 2, self.shadow_pad // 2
+
+        border_size = 1
+        
+        card_draw.rounded_rectangle(
+            [c_x - border_size, c_y - border_size, c_x + W, c_y + H], 
+            radius=self.corner_radius, 
+            fill=(255, 255, 255, 255) 
+        )
+
+        card_draw.rounded_rectangle([c_x, c_y, c_x + W, c_y + H], radius=self.corner_radius, fill=self.bg_color_rgb + (255,))
+
+        img.paste(shadow_img, (0, 0))
+        img.paste(card_img, (0, 0), card_img)
+        
+        return ImageClip(np.array(img))
+  
+
+    def _create_profile_icon(self, size=(80, 80), username=None):
+        upscale = 4
+        canvas_size = (size[0] * upscale, size[1] * upscale)
+        img = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        
+        colors = [
+            (255, 69, 0), (0, 121, 211), (70, 209, 96), (113, 147, 255),
+            (156, 39, 176), (233, 30, 99), (0, 150, 136), (255, 193, 7),
+            (96, 125, 139), (244, 67, 54), (103, 58, 183), (3, 169, 244),
+            (0, 188, 212), (255, 139, 0), (205, 220, 57)
+        ]
+        bg_color = random.choice(colors)
+        
+        draw.ellipse([0, 0, canvas_size[0], canvas_size[1]], fill=bg_color)
+        
+        border_width = 2 * upscale
+        draw.ellipse(
+            [border_width, border_width, canvas_size[0] - border_width, canvas_size[1] - border_width], 
+            outline=(255, 255, 255, 40), 
+            width=border_width
+        )
+
+        if username:
+            clean_name = ''.join(filter(str.isalnum, username))
+            letter = clean_name[0].upper() if clean_name else random.choice(string.ascii_uppercase)
+        else:
+            letter = random.choice(string.ascii_uppercase)
+        
+        font_size = int(canvas_size[1] * 0.6) 
+        try:
+            font = ImageFont.truetype(FONT_PATH, font_size)
+        except:
+            font = ImageFont.load_default()
+        
+        shadow_offset = 1 * upscale
+        draw.text(
+            (canvas_size[0]//2 + shadow_offset, canvas_size[1]//2 + shadow_offset), 
+            letter, fill=(0, 0, 0, 70), font=font, anchor="mm"
+        )
+        
+        draw.text((canvas_size[0]//2, canvas_size[1]//2), letter, fill="white", font=font, anchor="mm")
+        
+        return ImageClip(np.array(img.resize(size, Image.LANCZOS)))
+
+    def _build_ui_card(self, word_data, strategy, duration):
+        if not word_data: return ColorClip((10,10), color=(0,0,0)).set_opacity(0)
+        
+        text_clips, line_starts = self._get_cumulative_text_clips(word_data, duration)
+        sorted_lines = sorted(line_starts.keys())
+        off = self.shadow_pad // 2
+
+        # --- 1. DYNAMISCHER HOOK (Max 2 Zeilen) ---
+        max_hook_w = self.card_width - 80
+        current_size = self.caption_size # <--- Nutzt jetzt die neue Variable
+        
+        while current_size > 24:
+            hook = TextClip(strategy.reason, fontsize=current_size, color="white", font=FONT_PATH, 
+                            method='caption', size=(max_hook_w, None), align='West')
+            if hook.h <= 100: # Leicht angepasst, da Schrift jetzt 48 ist
+                break
+            hook.close()
+            current_size -= 2
+
+        hook = hook.set_duration(duration).set_position((40 + off, 125 + off))
+        
+        dynamic_header_height = 125 + hook.h + 30
+
+        # --- 2. CARD GRÖSSE BERECHNEN ---
+        max_display = min(max(sorted_lines) + 1, self.max_visible_lines) if sorted_lines else 1
+        max_h = dynamic_header_height + (max_display * self.line_height) + 20
+        
+        full_w = self.card_width + self.shadow_pad + self.shadow_offset_x
+        full_h = max_h + self.shadow_pad + self.shadow_offset_y
+
+        # --- 3. DYNAMISCHE HINTERGRÜNDE ---
+        bg_clips = []
+        for i, line_idx in enumerate(sorted_lines):
+            start_t = line_starts[line_idx]
+            end_t = line_starts[sorted_lines[i+1]] if i+1 < len(sorted_lines) else duration
             
-            # Video auf Audiolänge kürzen
-            video_clip = video_clip.subclip(0, audio_clip.duration)
-            (w, h) = video_clip.size
-            target_width = int((h * (9 / 16)) // 2) * 2
-            video_clip = vfx.crop(video_clip, width=target_width, height=h, x_center=w/2, y_center=h/2)
-            video_clip = video_clip.resize(newsize=(1080, 1920))
-
-            action_words_list = [aw.upper() for aw in strategy.action_words]
-            text_overlays = self._create_text_clips(word_timestamps, 1080, action_words_list)
-            final_video = CompositeVideoClip([video_clip] + text_overlays).set_audio(final_audio)
+            display_lines = min(line_idx + 1, self.max_visible_lines)
+            curr_h = dynamic_header_height + (display_lines * self.line_height) + 20
             
-            output_path = os.path.join(strategy.output_dir, f"{strategy.folder_name}.mp4")
+            clip = self._draw_card_background(curr_h).set_start(start_t).set_duration(max(0.1, end_t - start_t))
+            clip = clip.set_position(('left', 'top')) 
+            bg_clips.append(clip)
 
-            print("[*] Rendering Video...")
-            final_video.write_videofile(
-                output_path, 
+        dynamic_background = CompositeVideoClip(bg_clips, size=(full_w, full_h))
+    
+        # --- 4. STATISCHE HEADER INHALTE ---
+        generated_username = get_random_username()
+        icon = self._create_profile_icon(username=generated_username).set_duration(duration).set_position((40 + off, 30 + off))
+        name = TextClip(generated_username, fontsize=40, color="white", font=FONT_PATH).set_duration(duration).set_position((140 + off, 50 + off))
+
+        # --- 5. TEXT SCROLLING LOGIK ---
+        def scroll_logic(t):
+            curr = 0
+            for wd in word_data:
+                if t >= wd["start"]: curr = wd["line"]
+            if curr >= self.max_visible_lines:
+                return (0, -(curr - (self.max_visible_lines - 1)) * self.line_height)
+            return (0, 0)
+
+        viewport_h = self.line_height * self.max_visible_lines
+        text_container = CompositeVideoClip(
+            [CompositeVideoClip(text_clips, size=(self.card_width-80, 2000)).set_position(scroll_logic)],
+            size=(self.card_width-80, viewport_h)
+        ).set_position((40 + off, dynamic_header_height + off))
+
+        return CompositeVideoClip([
+            dynamic_background,
+            icon, name, hook,
+            text_container
+        ], size=(full_w, full_h)).set_duration(duration)
+    
+    # --- TEXT & LOGIK ---
+
+    def _get_cumulative_text_clips(self, word_data, duration):
+        max_w = self.card_width - 80
+        x, y = 0, 0
+        
+        start_t = word_data[0]["start"] if word_data else 0
+        line_starts = {0: start_t}
+        clips = []
+
+        for i, wd in enumerate(word_data):
+            txt_str = wd["word"]
+            tw = TextClip(txt_str, fontsize=self.font_size, font=FONT_PATH).w # Nutzt self.font_size (48)
+            
+            if x + tw > max_w:
+                x = 0
+                y += self.line_height
+                line_starts[y // self.line_height] = wd["start"]
+
+            line_t = line_starts[y // self.line_height]
+            
+            base = TextClip(txt_str, fontsize=self.font_size, color="white", font=FONT_PATH)\
+                   .set_start(line_t).set_duration(max(0.1, duration - line_t)).set_position((x, y))
+            
+            end_t = word_data[i+1]["start"] if i+1 < len(word_data) else duration
+            high = TextClip(txt_str, fontsize=self.font_size, color=self.highlight_color, font=FONT_PATH)\
+                   .set_start(wd["start"]).set_duration(max(0.1, end_t - wd["start"])).set_position((x, y))
+            
+            clips.extend([base, high])
+            wd["line"] = y // self.line_height
+            x += tw + 10
+
+        return clips, line_starts
+    
+    def _merge_script_with_timestamps(self, original_script, word_data):
+        script_words = original_script.split()
+        merged_data = []
+        min_len = min(len(script_words), len(word_data))
+        
+        for i in range(min_len):
+            merged_data.append({
+                "word": script_words[i],
+                "start": word_data[i]["start"],
+                "end": word_data[i]["end"]
+            })
+            
+        last_end = word_data[-1]["end"] if word_data else 0
+        for i in range(min_len, len(script_words)):
+            merged_data.append({
+                "word": script_words[i],
+                "start": last_end,
+                "end": last_end + 0.3
+            })
+            last_end += 0.3
+            
+        return merged_data
+
+    def create_video(self, original_script, word_timestamps, strategy, voice_path=None, bg_music_path=None):
+        print(f"[*] Starting Production: {strategy.folder_name} ({self.res_height}p)")
+        os.makedirs(strategy.output_dir, exist_ok=True)
+        bg_path = get_available_chunk(strategy.folder_name, strategy.search_query)
+        if not bg_path: return None
+
+        try:
+            merged_words = self._merge_script_with_timestamps(original_script, word_timestamps)
+
+            audio = AudioFileClip(voice_path) if voice_path else None
+            dur = audio.duration if audio else merged_words[-1]["end"] + 0.5
+            if bg_music_path:
+                music = AudioFileClip(bg_music_path).volumex(0.1).set_duration(dur)
+                audio = CompositeAudioClip([audio, music]) if audio else music
+
+            video = VideoFileClip(bg_path).subclip(0, dur).resize(height=self.res_height)
+            v_w, v_h = video.size
+            video = vfx.crop(video, width=int(v_h*(9/16)), height=v_h, x_center=v_w/2, y_center=v_h/2)
+
+            ui_card = self._build_ui_card(merged_words, strategy, dur)
+            if self.res_height < 1920: ui_card = ui_card.resize(self.res_height / 1920)
+
+            x_offset_left = 20
+            final = CompositeVideoClip([video, ui_card.set_position((x_offset_left, 'center'))], 
+                                      size=(self.res_width, self.res_height)).set_audio(audio)
+
+            output = os.path.join(strategy.output_dir, f"{strategy.folder_name}.mp4")
+            final.write_videofile(
+                output, 
+                fps=self.fps, 
                 codec="libx264", 
-                audio_codec="aac", 
-                fps=30, 
-                preset="slow",      # 'medium' oder 'slow' für bessere Kompression/Qualität
-                bitrate="8000k",      # Hohe Bitrate für scharfe Kanten
-                ffmpeg_params=[
-                    "-pix_fmt", "yuv420p",
-                    "-crf", "18",      # Constant Rate Factor: 18 ist visuell verlustfrei
-                    "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2" # Fix für ungerade Dimensionen
-                ],
-                logger=None
+                bitrate=self.bitrate, 
+                preset=self.preset, 
+                logger=self.logger,
+                threads=12 
             )
+            return output
 
         except Exception as e:
-                    print(f"[!] Rendering Error: {e}")
-                    return False
+            print(f"[!] Error: {e}"); return False
         finally:
-            print("[*] Cleaning up resources...")
-            try:
-                if 'final_video' in locals():
-                    if hasattr(final_video, 'audio') and final_video.audio:
-                        final_video.audio.close()
-                    final_video.close()
-            except Exception: pass
-            
-            try:
-                if 'audio_clip' in locals(): audio_clip.close()
-            except Exception: pass
-            
-            # --- NEU ---
-            try:
-                if 'bg_music_clip' in locals() and bg_music_clip: 
-                    bg_music_clip.close()
-            except Exception: pass
-            
-            try:
-                if 'final_audio' in locals() and final_audio != audio_clip: 
-                    final_audio.close()
-            except Exception: pass
+            if 'video' in locals(): video.close()
+            if 'audio' in locals() and audio: 
+                try: audio.close()
+                except: pass
 
-        time.sleep(2)
-        # Benutzten Chunk löschen
-        if not TEST_RUN:
-            if os.path.exists(bg_video_path):
-                try:
-                    os.remove(bg_video_path)
-                    print(f"[+] Used chunk deleted. Video saved at: {output_path}\n")
-                except OSError as e:
-                    print(f"[!] Could not delete chunk immediately (Errno 9 possible). OS holds lock. Error: {e}")
-        
-        return output_path
-
-    def _create_text_clips(self, word_data, video_width, action_words=[]):
-        if not os.path.exists(FONT_PATH):
-            raise FileNotFoundError(f"[!] Font not found: {FONT_PATH}")
-        
-        font = FONT_PATH
-        base_fontsize = 100  
-        max_allowed_width = int(video_width * 0.85) 
-        gap = 15
-        
-        # Nur noch Standard Farben (kein Rot mehr)
-        color_active = "#FFDD00"
-        stroke_active_color = "#B8860B"
-        color_inactive = "#FFFFFF"
-        stroke_inactive_color = "#B0B0B0"
-        
-        stroke_width = 6.0
-
-        # Die Funktion ist jetzt wieder simpler (kein is_action Parameter mehr nötig für Größe/Farbe)
-        def make_clean_text(txt, c_fill, c_stroke):
-            bg_clip = TextClip(
-                txt=txt, fontsize=base_fontsize, font=font,
-                color=c_stroke, stroke_color=c_stroke, 
-                stroke_width=stroke_width * 2, method='label'
-            )
-            fg_clip = TextClip(
-                txt=txt, fontsize=base_fontsize, font=font,
-                color=c_fill, method='label'
-            )
-            return CompositeVideoClip([bg_clip, fg_clip.set_position('center')], size=bg_clip.size)
-
-        # HILFSFUNKTION: Entfernt alle Satzzeichen für den Check
-        def clean_for_match(word):
-            return re.sub(r'[^A-Z0-9]', '', word)
-
-        text_clips = []
-        
-        for i in range(len(word_data)):
-            current_word_item = word_data[i]
-            word_text = f' {current_word_item["word"].upper()} '
-            start_t = current_word_item["start"]
-
-            if i < len(word_data) - 1:
-                end_t = word_data[i+1]["start"]
-            else:
-                end_t = current_word_item["end"]
-
-            dur = max(0.1, min(end_t - start_t, 1.5))
-            
-            raw_word_1 = current_word_item["word"].upper()
-            is_action_1 = clean_for_match(raw_word_1) in action_words
-
-            is_even = i % 2 == 0
-            if is_even:
-                pair_text_1 = word_text
-                raw_word_2 = word_data[i+1]["word"].upper() if i+1 < len(word_data) else ""
-                pair_text_2 = f' {raw_word_2} ' if raw_word_2 else ""
-                
-                is_action_2 = clean_for_match(raw_word_2) in action_words
-
-                # Ganz normale Farbzuweisung (Aktives Wort gelb, inaktives weiß)
-                c1, s1_c = color_active, stroke_active_color
-                c2, s2_c = color_inactive, stroke_inactive_color
-            else:
-                raw_word_1_prev = word_data[i-1]["word"].upper()
-                pair_text_1 = f' {raw_word_1_prev} '
-                pair_text_2 = word_text
-                
-                is_action_1_prev = clean_for_match(raw_word_1_prev) in action_words
-
-                # Ganz normale Farbzuweisung (Inaktives Wort weiß, aktives gelb)
-                c1, s1_c = color_inactive, stroke_inactive_color
-                c2, s2_c = color_active, stroke_active_color
-
-            # Left/Top Clip
-            clip_left = make_clean_text(pair_text_1, c1, s1_c)
-            clip_left = clip_left.set_start(start_t).set_duration(dur)
-
-            # Right/Bottom Clip
-            clip_right = None
-            if pair_text_2.strip(): 
-                clip_right = make_clean_text(pair_text_2, c2, s2_c)
-                clip_right = clip_right.set_start(start_t).set_duration(dur)
-
-            # --- POSITIONIERUNG (HORIZONTAL NEBENEINANDER MIT KURZEM SHAKE) ---
-            if clip_right:
-                total_w = clip_left.w + gap + clip_right.w
-                
-                if total_w > max_allowed_width:
-                    scale = max_allowed_width / total_w
-                    clip_left = clip_left.resize(scale)
-                    clip_right = clip_right.resize(scale)
-                    total_w = max_allowed_width
-                
-                start_x = (video_width - total_w) / 2
-                
-                base_y_left = (1920 - clip_left.h) / 2
-                base_y_right = (1920 - clip_right.h) / 2
-                
-                left_is_action = (is_even and is_action_1) or (not is_even and is_action_1_prev)
-                right_is_action = (is_even and is_action_2) or (not is_even and is_action_1)
-
-                # Linkes Wort (Kurzer Shake für die ersten 0.2 Sekunden)
-                if left_is_action:
-                    clip_left = clip_left.set_position(
-                        lambda t, x=start_x, y=base_y_left: (x, y + (math.sin(t * 80) * 8 if t < 0.2 else 0))
-                    )
-                else:
-                    clip_left = clip_left.set_position((start_x, 'center'))
-
-                # Rechtes Wort (Kurzer Shake für die ersten 0.2 Sekunden)
-                if right_is_action:
-                    clip_right = clip_right.set_position(
-                        lambda t, x=(start_x + clip_left.w + gap), y=base_y_right: (x, y + (math.sin(t * 80) * 8 if t < 0.2 else 0))
-                    )
-                else:
-                    clip_right = clip_right.set_position((start_x + clip_left.w + gap, 'center'))
-                
-                text_clips.append(clip_left)
-                text_clips.append(clip_right)
-            else:
-                if clip_left.w > max_allowed_width:
-                    clip_left = clip_left.resize(width=max_allowed_width)
-                
-                base_y_single = (1920 - clip_left.h) / 2
-                
-                # Einzelnes Wort (Kurzer Shake für die ersten 0.2 Sekunden)
-                if is_action_1:
-                    clip_left = clip_left.set_position(
-                        lambda t, y=base_y_single: ('center', y + (math.sin(t * 80) * 8 if t < 0.2 else 0))
-                    )
-                else:
-                    clip_left = clip_left.set_position('center')
-                    
-                text_clips.append(clip_left)
-        
-        return text_clips
-
-    def _download_and_slice(self, folder_name, search_query):
-        clean_query = search_query.lower().replace("4k", "").replace("1080p", "").replace("no commentary", "").strip()
-        core_theme = " ".join(clean_query.split()[:3])
-
-        queries_to_try = [
-            f"{search_query} -facecam -streamer -reaction -shorts no commentary cinematic",
-            f"{search_query} -facecam -streamer -shorts no commentary",
-            f"{clean_query} gameplay no commentary -shorts -facecam",
-            f"{core_theme} gameplay no commentary -shorts -facecam",
-            "minecraft parkour gameplay no commentary 4k -shorts"
-        ]
-
-        print(f"\n[!] Inventory for '{folder_name}' empty. Searching YouTube: {search_query}")
-        
-        category_dir = os.path.join(VIDEO_CHUNKS_DIR, folder_name)
-        os.makedirs(category_dir, exist_ok=True)
-        
-        temp_video = os.path.join(category_dir, "temp_source.mp4")
-        
-        ydl_opts = {
-            'format': 'bestvideo[height<=1080][vcodec^=avc1]+bestaudio[ext=m4a]/best[ext=mp4]',
-            'outtmpl': temp_video,
-            'quiet': True,
-            'noprogress': True,
-            'noplaylist': True,
-            'retries': 3,
-            'fragment_retries': 3,
-            'ignoreerrors': True,
-            'max_downloads': 1,
-            'match_filter': yt_dlp.utils.match_filter_func("duration > 480 & height >= 1080 & !is_live"),
-        }
-
-        download_success = False
-        for i, query in enumerate(queries_to_try):
-            print(f"[*] Search Attempt {i+1}/4: '{query}'")
-            try:
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    ydl.extract_info(f"ytsearch10:{query}", download=True)
-            except Exception:
-                pass
-
-            if os.path.exists(temp_video):
-                print(f"[+] Download successful on attempt {i+1}!")
-                download_success = True
-                break
-            else:
-                print(f"[-] Attempt {i+1} failed to find a valid video.")
-
-        if not download_success:
-            print("[!] CRITICAL: All fallback attempts failed. Check internet or update yt-dlp.")
-            return False
-
-        print(f"[+] Slicing into 90s chunks...")
-        
-        chunk_pattern = os.path.join(category_dir, "chunk_%03d.mp4")
-        ffmpeg_command = f'ffmpeg -y -ss 00:01:30 -i "{temp_video}" -c copy -map 0 -segment_time 00:01:30 -f segment "{chunk_pattern}"'
-        
-        try:
-            subprocess.run(ffmpeg_command, check=True, shell=True)
-            time.sleep(1)
-
-            generated_chunks = glob.glob(os.path.join(category_dir, "chunk_*.mp4"))
-            
-            for chunk in generated_chunks:
-                file_size_mb = os.path.getsize(chunk) / (1024 * 1024)
-                if file_size_mb < 5: 
-                    print(f"[-] Deleting tiny chunk (possible remainder): {chunk} ({file_size_mb:.2f}MB)")
-                    os.remove(chunk)
-
-            if os.path.exists(temp_video):
-                os.remove(temp_video)
-        except subprocess.CalledProcessError as e:
-            print(f"[!] FFmpeg failed: {e}")
-
-    def _get_available_chunk(self, folder_name, search_query):
-        category_dir = os.path.join(VIDEO_CHUNKS_DIR, folder_name)
-        os.makedirs(category_dir, exist_ok=True)
-        
-        chunks = sorted(glob.glob(os.path.join(category_dir, "chunk_*.mp4")))
-
-        if not chunks:
-            self._download_and_slice(folder_name, search_query)
-            chunks = sorted(glob.glob(os.path.join(category_dir, "chunk_*.mp4")))
-            
-        return chunks[0] if chunks else None
-    
-# --- TEST RUN ---
+# --- MAIN TEST BLOCK ---
 if __name__ == "__main__":
-    import dataclasses
-    import os
-    import time
-    
     from voice_engine import VoiceEngine 
-    from music_engine import MusicEngine 
+    import dataclasses
 
     @dataclasses.dataclass
     class MockStrategy:
@@ -383,14 +337,14 @@ if __name__ == "__main__":
         bg_music_query: str
 
     # Deine Test-Daten inklusive Musik-Vibe
-    test_strategy = MockStrategy(
+    strategy = MockStrategy(
         voice="am_michael",
         voice_speed=1.1,
         hook_style="Humorous",
         folder_name="satisfying_sand",
         output_dir="data/test_run_sand",
         search_query="kinetic sand cutting with cookie cutters no commentary 4k",
-        reason="Drama at the office...",
+        reason="Drama at the office... What can we see about that? Issue?",
         caption="He said WHAT about my lunches?! 😭😭 #husbandproblems",
         description="This wife's sweet gestures backfired!",
         tags="#lunchboxfails #couplecomedy",
@@ -398,53 +352,11 @@ if __name__ == "__main__":
         bg_music_query="sneaky suspicious comedic background music no copyright"
     )
 
-    test_script = """
-    I woke up at 5 AM daily, making gourmet lunches and cutting his cheese into a perfect HEART. 
-    But he lied! I surprised him at work and CAUGHT his coworker hand-feeding him! 
-    I snapped a POLAROID, packed my bags, and immediately called a LAWYER. 
-    Am I the jerk?
-    """
+    script = "I quietly stopped going to the office... and no one noticed for three months. My company did the classic we are better together thing and told everyone to come in two days a week. I just stayed home."
 
-    print("\n" + "="*40)
-    print("🎬 STARTING FULL AUDIO-VISUAL PIPELINE TEST")
-    print("="*40)
+    v_eng = VoiceEngine()
+    audio_file = v_eng.generate_audio(script, strategy)
+    word_timestamp = v_eng.get_word_timestamps(audio_file)
 
-    # 1. Voice generieren
-    voice_eng = VoiceEngine()
-    while not voice_eng.model_verified:
-        time.sleep(2)
-        voice_eng.model_verified = voice_eng.verify_kokoro()
-
-    print("\n[*] 1. Generating Audio (Kokoro)...")
-    audio_path = voice_eng.generate_audio(test_script, strategy=test_strategy)
-    
-    if not audio_path or not os.path.exists(audio_path):
-        print("[!] TEST ABORTED: Voice generation failed.")
-    else:
-        # 2. Timestamps extrahieren
-        print("\n[*] 2. Extracting Timestamps (Whisper)...")
-        word_timestamps = voice_eng.get_word_timestamps(audio_path)
-        print(f"[+] Extracted {len(word_timestamps)} words.")
-
-        # 3. Hintergrundmusik laden (NEU)
-        print("\n[*] 3. Fetching Background Music (MusicEngine)...")
-        music_eng = MusicEngine()
-        bg_music_path = music_eng.fetch_background_music(test_strategy)
-
-        # 4. Video-Assembly mit Voice UND Musik
-        print("\n[*] 4. Assembling Video with Voice, Music & Shakes...")
-        video_eng = VideoEngine()
-        
-        success_path = video_eng.create_video(
-            word_timestamps=word_timestamps,
-            audio_path=audio_path,
-            strategy=test_strategy,
-            bg_music_path=bg_music_path 
-        )
-
-        if success_path:
-            print(f"\n[✅] TEST SUCCESSFUL! Video created at: {success_path}")
-            print(f"[*] Visual Check: Action Words should shake briefly.")
-            print(f"[*] Audio Check: Voice should be clear, Music at 10% volume.")
-        else:
-            print("\n[!] TEST FAILED during Video Assembly.")
+    engine = VideoEngine(is_test=True)
+    engine.create_video(script, word_timestamp, strategy)
