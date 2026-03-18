@@ -15,6 +15,7 @@ if not hasattr(PIL.Image, 'ANTIALIAS'):
 from config import (
     VIDEO_CHUNKS_DIR, TEST_RUN, FONT_PATH
 )
+from utils import get_available_chunk
 
 if platform.system() == "Windows":
     IMAGEMAGICK_BINARY = r"C:\Program Files\ImageMagick-7.1.2-Q16-HDRI\magick.exe"
@@ -27,7 +28,7 @@ class VideoEngineOld:
         print("\n[*] Starting video production...")
         os.makedirs(strategy.output_dir, exist_ok=True)
 
-        bg_video_path = self._get_available_chunk(strategy.folder_name, strategy.search_query)
+        bg_video_path = get_available_chunk(strategy.folder_name, strategy.search_query)
         if not bg_video_path:
             print("[!] No background video available.")
             return None
