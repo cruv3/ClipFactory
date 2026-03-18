@@ -151,7 +151,7 @@ class VideoEngine:
 
         # --- 1. DYNAMISCHER HOOK (Max 2 Zeilen) ---
     
-        clean_caption = re.sub(r'#\w+', '', strategy.caption)
+        clean_caption = re.sub(r'#\S+', '', strategy.caption)
         clean_caption = ''.join(c for c in clean_caption if not ('\U00010000' <= c <= '\U0010ffff'))
         clean_caption = " ".join(clean_caption.split())
 
