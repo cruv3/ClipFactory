@@ -3,6 +3,7 @@ import random
 import platform
 import numpy as np
 import string
+import re
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 from moviepy.config import change_settings
 from moviepy.editor import (
@@ -149,11 +150,16 @@ class VideoEngine:
         off = self.shadow_pad // 2
 
         # --- 1. DYNAMISCHER HOOK (Max 2 Zeilen) ---
+    
+        clean_caption = re.sub(r'#\w+', '', strategy.caption)
+        clean_caption = ''.join(c for c in clean_caption if not ('\U00010000' <= c <= '\U0010ffff'))
+        clean_caption = " ".join(clean_caption.split())
+
         max_hook_w = self.card_width - 80
-        current_size = self.caption_size # <--- Nutzt jetzt die neue Variable
+        current_size = self.caption_size
         
         while current_size > 24:
-            hook = TextClip(strategy.reason, fontsize=current_size, color="white", font=FONT_PATH, 
+            hook = TextClip(strategy.caption, fontsize=current_size, color="white", font=FONT_PATH, 
                             method='caption', size=(max_hook_w, None), align='West')
             if hook.h <= 100: # Leicht angepasst, da Schrift jetzt 48 ist
                 break

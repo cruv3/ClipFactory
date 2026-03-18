@@ -59,6 +59,7 @@ class StoryAnalyzer(OllamaProvider):
            - We ONLY use stimulating ASMR or gameplay (Brainrot style).
            - Create a 'folder_name' and a specific 'search_query' for youtube (Append "no commentary" and "4k").
            - Avoid the last query: {last_search_query}
+           - Avoid banned query: ["shredder satisfying paper shredding",]
 
 
         3. Action Words: Identify high-impact Power Words for visual shakes.
@@ -73,11 +74,6 @@ class StoryAnalyzer(OllamaProvider):
            - Create a string of 6-8 high-performance hashtags.
            - Mix broad tags (#shorts, #storytime) with niche tags (#redditstories, #aita, #datingfails).
            - Always include #shorts and #reddit. 
-
-        6. Caption Strategy:
-           - Create a highly engaging, short caption (maximum 1 sentence or 10 words).
-           - DO NOT include any hashtags here (they belong strictly in the tags section).
-           - Keep it mysterious or funny to drive engagement.
            
         Return ONLY a raw JSON object. Follow this exact structure:
         {{
@@ -88,7 +84,7 @@ class StoryAnalyzer(OllamaProvider):
             "bg_music_query": "suspenseful dark background music no copyright",
             "reason": "The story is chaotic and destructive.",
             "hook_style": "Shocking",
-            "caption": "Wait until the end...",
+            "caption": "Wait until the end... 🚩",
             "description": "Crazy storytime! #reddit #storytime",
             "tags": "#shorts #redditstories #storytime #datingfail #aita #drama #tinder",
             "action_words": ["STEAK", "WINDOW", "BATHROOM"]
