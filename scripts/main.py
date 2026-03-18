@@ -6,6 +6,7 @@ from script_rewriter import ScriptRewriter
 from story_analyzer import StoryAnalyzer
 from voice_engine import VoiceEngine
 from video_engine import VideoEngine
+from video_engine_old import VideoEngineOld
 from video_uploader import VideoUploader
 from telegram_bot import TelegramApproval
 from stat_reporter import StatReporter
@@ -23,7 +24,7 @@ async def main_loop():
     rewriter = ScriptRewriter(0.6, 0.9, 4096)
     analyzer = StoryAnalyzer(0.7, 0.9)
     voice_eng = VoiceEngine()
-    video_eng = VideoEngine()
+    video_eng = VideoEngineOld()
     uploader = VideoUploader()
     tg_bot = TelegramApproval()
     reporter = StatReporter()
@@ -90,7 +91,6 @@ async def main_loop():
             # 6. Video Assembly
             bg_music_path = music_eng.fetch_background_music(strategy)
             video_path = video_eng.create_video(
-                original_script=script,
                 word_timestamps=word_timestamps,
                 strategy=strategy,
                 voice_path=voice_path,
@@ -121,7 +121,7 @@ async def main_loop():
                     await tg_bot.bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=error_msg, parse_mode='HTML')
                     print(f"\n[!] CRITICAL: Upload failed on {failed_platforms}. Breaking loop.")
                     break #
-                
+
                 report_msg = "✅ <b>UPLOAD REPORT</b>\n━━━━━━━━━━━━━━━━━━━━\n"
                 for platform, status in upload_results.items():
                     report_msg += f"<b>{platform}:</b> {status}\n"

@@ -22,7 +22,7 @@ if platform.system() == "Windows":
 else:
     change_settings({"IMAGEMAGICK_BINARY": "/usr/bin/convert"})
 
-class VideoEngine:
+class VideoEngineOld:
     def create_video(self, word_timestamps, audio_path, strategy, bg_music_path=None):
         print("\n[*] Starting video production...")
         os.makedirs(strategy.output_dir, exist_ok=True)
