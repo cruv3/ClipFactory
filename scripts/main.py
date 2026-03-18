@@ -114,6 +114,14 @@ async def main_loop():
                 print(f"[*] Uploading to Social Media...")
                 upload_results = await uploader.distribute_video(video_path, strategy)
 
+                failed_platforms = [p for p, res in upload_results.items() if "❌ Failed" in str(res)]
+                
+                if failed_platforms:
+                    error_msg = f"❌ <b>UPLOAD FAILED</b>\nPlatforms: {', '.join(failed_platforms)}\n\nStopping factory for investigation."
+                    await tg_bot.bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=error_msg, parse_mode='HTML')
+                    print(f"\n[!] CRITICAL: Upload failed on {failed_platforms}. Breaking loop.")
+                    break #
+                
                 report_msg = "✅ <b>UPLOAD REPORT</b>\n━━━━━━━━━━━━━━━━━━━━\n"
                 for platform, status in upload_results.items():
                     report_msg += f"<b>{platform}:</b> {status}\n"

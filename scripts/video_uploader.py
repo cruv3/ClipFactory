@@ -21,29 +21,41 @@ from config import (
 
 class VideoUploader:
     async def distribute_video(self, video_path, strategy):
-        if not os.path.exists(video_path):
-            print(f"[!] Cannot upload, file not found: {video_path}")
-            return {"error": "File not found"}
-
         results = {}
         final_tags = f"{strategy.tags} #shorts #viral"
         caption = f"{strategy.caption}\n\n{final_tags}"
         yt_title = strategy.caption[:100]
 
-        # Instagram
-        ig_url = self._upload_to_instagram(video_path, caption)
-        results["Instagram"] = ig_url if ig_url else "❌ Failed"
-        if ig_url: self._log_video_to_history(ig_url, strategy, "Instagram", video_path)
-        
-        # TikTok
-        tk_url = await self._upload_to_tiktok(video_path, caption)
-        results["TikTok"] = tk_url if tk_url else "❌ Failed"
-        if tk_url: self._log_video_to_history(tk_url, strategy, "TikTok", video_path)
-        
-        # YouTube
-        yt_url = self._upload_to_youtube(video_path, yt_title, caption, final_tags)
-        results["YouTube"] = yt_url if yt_url else "❌ Failed"
-        if yt_url: self._log_video_to_history(yt_url, strategy, "Youtube", video_path)
+        platforms = [
+            {"name": "Instagram", "func": lambda: self._upload_to_instagram(video_path, caption)},
+            {"name": "TikTok", "func": lambda: self._upload_to_tiktok(video_path, caption)},
+            {"name": "YouTube", "func": lambda: self._upload_to_youtube(video_path, yt_title, caption, final_tags)}
+        ]
+
+        for p in platforms:
+            success_url = None
+            for attempt in range(1, 4):
+                print(f"[*] Upload to {p['name']} - Attempt {attempt}/3...")
+                try:
+                    if p['name'] == "TikTok":
+                        success_url = await self._upload_to_tiktok(video_path, caption)
+                    else:
+                        success_url = p['func']()
+
+                    if success_url:
+                        print(f"[+] {p['name']} upload successful!")
+                        break 
+                except Exception as e:
+                    print(f"[!] Attempt {attempt} failed for {p['name']}: {e}")
+                
+                if attempt < 3:
+                    await asyncio.sleep(30 * attempt)
+
+            if success_url:
+                results[p['name']] = success_url
+                self._log_video_to_history(success_url, strategy, p['name'], video_path)
+            else:
+                results[p['name']] = "❌ Failed"
 
         temp_run_dir = os.path.dirname(video_path)
         if os.path.exists(temp_run_dir) and "__" in temp_run_dir:
@@ -332,9 +344,12 @@ if __name__ == "__main__":
         reason="Deep voice matches the serious tone of the family drama.",
         caption="Am I the idiot for ruining my sister's wedding? 👰🔥",
         description="My sister wanted a child-free wedding, but I brought my kids anyway. Now the whole family is divided. Who is wrong here?",
-        tags="#aita #redditstories #familydrama #wedding #storytime #minecraft"
+        tags="#aita #redditstories #familydrama #wedding #storytime #minecraft",
+        voice_speed=1.0,
+        bg_music_query="test_this",
+        action_words=["test"],
     )
-    test_video_file = "data/test_output/minecraft.mp4"
+    test_video_file = "data/This app took meetings from blah to BRILLIANT!.mp4"
 
     async def run_test():
         uploader = VideoUploader()
@@ -344,7 +359,8 @@ if __name__ == "__main__":
             return
 
         print(f"[*] Starting test upload for: {test_video_file}")
-        await uploader._upload_to_tiktok(test_video_file, mock_strat.caption)
+        #await uploader._upload_to_tiktok(test_video_file, mock_strat.caption)
+        await uploader._upload_to_instagram(test_video_file, "This app took meetings from blah to BRILLIANT! 😂🏆")
         print("\n=== FINAL UPLOAD REPORT COMPLETE ===")
 
     asyncio.run(run_test())

@@ -3,7 +3,6 @@ services:
   app:
     build: .
     container_name: viral_video_factory
-    restart: unless-stopped
     volumes:
       - .:/app
       - ./secrets:/app/secrets
