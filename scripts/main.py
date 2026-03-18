@@ -93,7 +93,7 @@ async def main_loop():
             video_path = video_eng.create_video(
                 word_timestamps=word_timestamps,
                 strategy=strategy,
-                voice_path=voice_path,
+                audio_path=voice_path,
                 bg_music_path=bg_music_path
             ) 
             if not video_path:
