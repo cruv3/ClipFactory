@@ -21,7 +21,7 @@ services:
 
   ai-master:
     build: ./ai_service
-    container_name: rtxXX90_ai_director
+    container_name: ai_director
     ports:
       - "8800:8800"
     volumes:
