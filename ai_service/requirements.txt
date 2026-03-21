@@ -2,9 +2,6 @@ fastapi
 uvicorn
 python-multipart
 pydantic
-torch
-torchvision
-torchaudio
 transformers
 accelerate
 diffusers
