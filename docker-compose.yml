@@ -19,7 +19,7 @@ services:
     restart: unless-stopped
 
   video-ai-master:
-    build: ./video_ai_service
+    build: ./ai_service
     container_name: rtxXX90_ai_director
     ports:
       - "8800:8800"
