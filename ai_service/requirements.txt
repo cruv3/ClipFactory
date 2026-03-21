@@ -11,3 +11,4 @@ moviepy
 kokoro
 OmegaConf
 vector_quantize_pytorch
+numpy < 2
