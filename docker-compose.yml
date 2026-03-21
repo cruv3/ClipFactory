@@ -8,23 +8,23 @@ services:
       - ./secrets:/app/secrets
       - ./data:/app/data
       - ./.env:/app/.env
+      - ./output:/app/output
     environment:
       - TZ=Europe/Berlin
       - PYTHONUNBUFFERED=1
     depends_on:
-      video-ai-master:
+      ai-master:
         condition: service_healthy
     networks:
       - caddy-net
     restart: unless-stopped
 
-  video-ai-master:
+  ai-master:
     build: ./ai_service
     container_name: rtxXX90_ai_director
     ports:
       - "8800:8800"
     volumes:
-      - ./data:/app/data
       - ./huggingface:/models
       - ./secrets:/app/secrets
       - ./.env:/app/.env
