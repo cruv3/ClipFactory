@@ -32,7 +32,6 @@ API_GENERATE_VIDEO  = f"{AI_BASE_URL}/generate_video"
 API_VRAM_CLEANUP    = f"{AI_BASE_URL}/cleanup"
 API_HEALTH_CHECK    = f"{AI_BASE_URL}/health"
 
-
 WORD_MIN = int(os.getenv("WORD_MIN", 150))
 WORD_MAX = int(os.getenv("WORD_MAX", 250))
 
@@ -64,7 +63,6 @@ FONT_PATH = os.path.join(BASE_PATH, "fonts", "SourGummy_SemiExpanded-ExtraBoldIt
 
 # --- Video AI / RTX XX90 Configuration ---
 USE_RTX_XX90 = os.getenv("USE_RTX_XX90", "False").lower() == "true"
-VIDEO_AI_URL = os.getenv("VIDEO_AI_URL", "http://192.168.2.124:8880/generate")
 AI_GENERATED_DIR = os.path.join(DATA_DIR, "ai_generated")
 for directory in [SECRETS_DIR, DATA_DIR, VIDEO_CHUNKS_DIR, AI_GENERATED_DIR]:
     if not os.path.exists(directory):

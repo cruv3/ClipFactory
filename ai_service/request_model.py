@@ -3,7 +3,7 @@ from typing import List
 
 class ScriptRequest(BaseModel):
     prompt: str
-    model_id: str = "google/gemma-2-9b-it"
+    model_id: str = "google/gemma-3-27b-it"
 
 class VoiceRequest(BaseModel):
     script_text: str

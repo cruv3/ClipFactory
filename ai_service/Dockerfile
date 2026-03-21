@@ -1,5 +1,6 @@
 FROM nvcr.io/nvidia/pytorch:24.01-py3
 
+# 1. System-Pakete
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     libsndfile1 \
@@ -8,34 +9,16 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
+# 2. DER DEFINITIVE TORCH-BLOCKER:
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir "numpy<2.0.0" && \
-    pip install --no-cache-dir \
-    fastapi \
-    uvicorn \
-    python-multipart \
-    pydantic \
-    transformers \
-    accelerate \
-    diffusers \
-    bitsandbytes \
-    sentencepiece \
-    moviepy \
-    kokoro \
-    OmegaConf \
-    vector_quantize_pytorch \
-    scikit-learn \
-    scipy
+    pip install --no-cache-dir fastapi uvicorn python-multipart pydantic moviepy kokoro OmegaConf vector_quantize_pytorch scikit-learn scipy && \
+    pip install --no-cache-dir --no-deps transformers accelerate diffusers bitsandbytes sentencepiece
 
-# 3. Den Service-Code kopieren
+# 3. Code kopieren
 COPY . .
 
-# Pfad für die Modelle (gemappt in docker-compose)
 ENV HF_HOME=/models
-ENV TORCH_HOME=/models
+EXPOSE 8800
 
-# Port für FastAPI
-EXPOSE 8880
-
-# Startbefehl für den High-End Service
-CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8880"]
+CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8800"]
