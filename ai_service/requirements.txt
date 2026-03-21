@@ -11,6 +11,6 @@ diffusers
 bitsandbytes
 sentencepiece
 moviepy
-ChatTTS
+kokoro
 OmegaConf
 vector_quantize_pytorch
