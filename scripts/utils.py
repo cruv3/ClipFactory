@@ -3,15 +3,12 @@ import shutil
 from datetime import datetime
 import requests
 import json
-import glob
-import yt_dlp
-import subprocess
-import time 
 import random
+from typing import List
 
 from config import DATA_DIR, VIDEO_CHUNKS_DIR, STRATEGY_LOG, VIDEO_HISTORY_JSON
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 @dataclass
 class StoryStrategy:
     voice: str
@@ -26,6 +23,7 @@ class StoryStrategy:
     description: str
     tags: str
     action_words: list
+    prompts_scene: List[str] = field(default_factory=list)
 
 def clean_data_folder():
     print(f"\n[*] Cleaning factory floor ({DATA_DIR})...")
@@ -168,93 +166,6 @@ def get_trending_backgrounds():
             print(f"[!] Konnte Trends für '{query}' nicht laden: {e}")
             
     return trending_keywords
-
-
-def download_and_slice(folder_name, search_query):
-        clean_query = search_query.lower().replace("4k", "").replace("1080p", "").replace("no commentary", "").strip()
-        core_theme = " ".join(clean_query.split()[:3])
-
-        queries_to_try = [
-            f"{search_query} -facecam -streamer -reaction -shorts no commentary cinematic",
-            f"{search_query} -facecam -streamer -shorts no commentary",
-            f"{clean_query} gameplay no commentary -shorts -facecam",
-            f"{core_theme} gameplay no commentary -shorts -facecam",
-            "minecraft parkour gameplay no commentary 4k -shorts"
-        ]
-
-        print(f"\n[!] Inventory for '{folder_name}' empty. Searching YouTube: {search_query}")
-        
-        category_dir = os.path.join(VIDEO_CHUNKS_DIR, folder_name)
-        os.makedirs(category_dir, exist_ok=True)
-        
-        temp_video = os.path.join(category_dir, "temp_source.mp4")
-        
-        ydl_opts = {
-            'format': 'bestvideo[height<=1080][vcodec^=avc1]+bestaudio[ext=m4a]/best[ext=mp4]',
-            'outtmpl': temp_video,
-            'quiet': True,
-            'noprogress': True,
-            'noplaylist': True,
-            'retries': 3,
-            'fragment_retries': 3,
-            'ignoreerrors': True,
-            'max_downloads': 1,
-            'match_filter': yt_dlp.utils.match_filter_func("duration > 480 & height >= 1080 & !is_live"),
-        }
-
-        download_success = False
-        for i, query in enumerate(queries_to_try):
-            print(f"[*] Search Attempt {i+1}/4: '{query}'")
-            try:
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    ydl.extract_info(f"ytsearch10:{query}", download=True)
-            except Exception:
-                pass
-
-            if os.path.exists(temp_video):
-                print(f"[+] Download successful on attempt {i+1}!")
-                download_success = True
-                break
-            else:
-                print(f"[-] Attempt {i+1} failed to find a valid video.")
-
-        if not download_success:
-            print("[!] CRITICAL: All fallback attempts failed. Check internet or update yt-dlp.")
-            return False
-
-        print(f"[+] Slicing into 90s chunks...")
-        
-        chunk_pattern = os.path.join(category_dir, "chunk_%03d.mp4")
-        ffmpeg_command = f'ffmpeg -y -ss 00:01:30 -i "{temp_video}" -c copy -map 0 -segment_time 00:01:30 -f segment "{chunk_pattern}"'
-        
-        try:
-            subprocess.run(ffmpeg_command, check=True, shell=True)
-            time.sleep(1)
-
-            generated_chunks = glob.glob(os.path.join(category_dir, "chunk_*.mp4"))
-            
-            for chunk in generated_chunks:
-                file_size_mb = os.path.getsize(chunk) / (1024 * 1024)
-                if file_size_mb < 5: 
-                    print(f"[-] Deleting tiny chunk (possible remainder): {chunk} ({file_size_mb:.2f}MB)")
-                    os.remove(chunk)
-
-            if os.path.exists(temp_video):
-                os.remove(temp_video)
-        except subprocess.CalledProcessError as e:
-            print(f"[!] FFmpeg failed: {e}")
-
-def get_available_chunk(folder_name, search_query):
-    category_dir = os.path.join(VIDEO_CHUNKS_DIR, folder_name)
-    os.makedirs(category_dir, exist_ok=True)
-    
-    chunks = sorted(glob.glob(os.path.join(category_dir, "chunk_*.mp4")))
-
-    if not chunks:
-        download_and_slice(folder_name, search_query)
-        chunks = sorted(glob.glob(os.path.join(category_dir, "chunk_*.mp4")))
-        
-    return chunks[0] if chunks else None
 
 
 

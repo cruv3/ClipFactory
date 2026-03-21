@@ -23,12 +23,16 @@ STRATEGY_LOG = os.path.join(DATA_DIR, "ai_strategy.txt")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.1")
-OLLAMA_MODEL_BACKUP = os.getenv("OLLAMA_MODEL_BACKUP", "llama3.1")
-OLLAMA_BASE_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
-OLLAMA_GENERATE_URL = f"{OLLAMA_BASE_URL}/api/generate"
-OLLAMA_PULL_URL = f"{OLLAMA_BASE_URL}/api/pull"
-OLLAMA_TAGS_URL = f"{OLLAMA_BASE_URL}/api/tags"
+LLM_MODEL = os.getenv("LLM_MODEL")
+AI_SERVICE_IP = os.getenv("AI_SERVICE_IP", "192.168.2.124:8800")
+AI_BASE_URL = f"http://{AI_SERVICE_IP}"
+API_GENERATE_SCRIPT = f"{AI_BASE_URL}/generate_script"
+API_GENERATE_VOICE  = f"{AI_BASE_URL}/generate_voice"
+API_GENERATE_VIDEO  = f"{AI_BASE_URL}/generate_video"
+API_VRAM_CLEANUP    = f"{AI_BASE_URL}/cleanup"
+API_HEALTH_CHECK    = f"{AI_BASE_URL}/health"
+
+
 WORD_MIN = int(os.getenv("WORD_MIN", 150))
 WORD_MAX = int(os.getenv("WORD_MAX", 250))
 
@@ -57,3 +61,11 @@ YOUTUBE_SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
 
 # Fonts
 FONT_PATH = os.path.join(BASE_PATH, "fonts", "SourGummy_SemiExpanded-ExtraBoldItalic.ttf").replace("\\", "/")
+
+# --- Video AI / RTX XX90 Configuration ---
+USE_RTX_XX90 = os.getenv("USE_RTX_XX90", "False").lower() == "true"
+VIDEO_AI_URL = os.getenv("VIDEO_AI_URL", "http://192.168.2.124:8880/generate")
+AI_GENERATED_DIR = os.path.join(DATA_DIR, "ai_generated")
+for directory in [SECRETS_DIR, DATA_DIR, VIDEO_CHUNKS_DIR, AI_GENERATED_DIR]:
+    if not os.path.exists(directory):
+        os.makedirs(directory, exist_ok=True)

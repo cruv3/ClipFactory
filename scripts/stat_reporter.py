@@ -7,7 +7,7 @@ import yt_dlp
 from config import (
     OLLAMA_MODEL, OLLAMA_MODEL_BACKUP ,OLLAMA_GENERATE_URL, VIDEO_HISTORY_JSON, STRATEGY_LOG
 )
-from ollama_provider import OllamaProvider
+from scripts.ai_service_provider import OllamaProvider
 
 class StatReporter(OllamaProvider):
     def __init__(self):       

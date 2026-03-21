@@ -3,7 +3,7 @@ import re
 import os
 
 from config import OLLAMA_GENERATE_URL, STRATEGY_LOG, OLLAMA_MODEL, OLLAMA_MODEL_BACKUP, WORD_MAX, WORD_MIN
-from ollama_provider import OllamaProvider
+from scripts.ai_service_provider import OllamaProvider
 
 class ScriptRewriter(OllamaProvider):
     def __init__(self, ai_temp = 0.8, ai_top_p = 1.0, ai_num_ctx = 4096):

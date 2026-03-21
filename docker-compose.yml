@@ -1,5 +1,5 @@
 services:
-  # --- DEINE VIDEO FACTORY ---
+  # --- DEINE VIDEO FACTORY (DIE LOGIK) ---
   app:
     build: .
     container_name: viral_video_factory
@@ -12,21 +12,26 @@ services:
       - TZ=Europe/Berlin
       - PYTHONUNBUFFERED=1
     depends_on:
-      ollama:
-        condition: service_healthy
-      kokoro:
+      video-ai-master:
         condition: service_healthy
     networks:
       - caddy-net
+    restart: unless-stopped
 
-  # --- OLLAMA (KI TEXT) ---
-  ollama:
-    image: ollama/ollama:latest
-    container_name: ollama_service
+  video-ai-master:
+    build: ./video_ai_service
+    container_name: rtxXX90_ai_director
     ports:
-      - "11434:11434"
+      - "8800:8800"
     volumes:
-      - /home/server/ClipFactory/ollama_models:/root/.ollama
+      - ./data:/app/data
+      - ./huggingface:/models
+      - ./secrets:/app/secrets
+      - ./.env:/app/.env
+    environment:
+      - TZ=Europe/Berlin
+      - HF_TOKEN=${HF_TOKEN} # Dein HuggingFace Token für Gemma & LTX
+      - PYTHONUNBUFFERED=1
     deploy:
       resources:
         reservations:
@@ -34,41 +39,17 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
-    healthcheck:
-      test: ["CMD", "ollama", "list"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
-    restart: unless-stopped
-    networks:
-      - caddy-net
 
-  # --- KOKORO (KI VOICE) ---
-  kokoro:
-    image: ghcr.io/remsky/kokoro-fastapi-gpu:latest
-    container_name: kokoro
-    ports:
-      - "8880:8880"
-    volumes:
-      - /home/server/ClipFactory/kokoro_model:/app/model
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
+    shm_size: '2gb' 
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8880/web/"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
+      test: ["CMD", "curl", "-f", "http://localhost:8800/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s # LTX-2.3 braucht Zeit zum Initialisieren
     restart: unless-stopped
     networks:
       - caddy-net
-    
 
 networks:
   caddy-net:

@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+python-multipart
+pydantic
+torch
+torchvision
+torchaudio
+transformers
+accelerate
+diffusers
+bitsandbytes
+sentencepiece
+moviepy
+ChatTTS
+OmegaConf
+vector_quantize_pytorch
