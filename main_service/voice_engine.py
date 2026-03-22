@@ -9,7 +9,7 @@ import shutil
 warnings.filterwarnings("ignore", category=UserWarning)
 
 import config
-from ai_service_provider import AIServiceProvider
+from main_service.story_analyzer_utils.ai_service_provider import AIServiceProvider
 
 class VoiceEngine:
     def __init__(self):

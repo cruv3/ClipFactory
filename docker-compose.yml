@@ -13,7 +13,6 @@ services:
     environment:
       - TZ=Europe/Berlin
       - PYTHONUNBUFFERED=1
-    # Wartet darauf, dass die KIs hochgefahren sind
     depends_on:
       ai-llm:
         condition: service_healthy
@@ -26,22 +25,18 @@ services:
       - caddy-net
 
   # ==========================================
-  # 2. KI-SERVICE: LLM (Gemma 3) - Port 8801
+  # 2. KI-SERVICE: LLM (OLLAMA) - Port 8801
   # ==========================================
   ai-llm:
-    build: ./ai_service_llm
+    image: ollama/ollama:latest
     container_name: ai_llm_director
     ports:
-      - "8801:8800"             # Host-Port 8801 mappt auf internen Port 8800
+      - "8801:11434"            # Host-Port 8801 mappt auf Ollamas internen 11434
     volumes:
-      - ./ai_service_llm:/app
-      - ./huggingface:/models   # Cache für die 27B Weights
-      - ./data:/app/data
-      - ./.env:/app/.env
+      - ./ollama_data:/root/.ollama  # Ollamas eigener, effizienter Model-Cache
     environment:
       - TZ=Europe/Berlin
-      - HF_TOKEN=${HF_TOKEN}
-      - PYTHONUNBUFFERED=1
+      - OLLAMA_KEEP_ALIVE=0     # (Optional) Zwingt Ollama, den VRAM nach Generierung sofort zu leeren!
     deploy:
       resources:
         reservations:
@@ -49,9 +44,8 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
-    shm_size: '2gb' 
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8800/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:11434/"] # Ollama Root Healthcheck
       interval: 30s
       timeout: 10s
       retries: 3
@@ -63,18 +57,17 @@ services:
   # 3. KI-SERVICE: TTS (Kokoro) - Port 8802
   # ==========================================
   ai-tts:
-    build: ./ai_service_tts
+    # Das fertige, offizielle GPU-Image (zieht alle Modelle automatisch)
+    image: ghcr.io/remsky/kokoro-fastapi-gpu:latest
     container_name: ai_tts_director
     ports:
-      - "8802:8800"             # Host-Port 8802 mappt auf internen Port 8800
+      - "8802:8880"             # Host 8802 mappt auf Kokoros internen Port 8880
     volumes:
-      - ./ai_service_tts:/app
-      - ./huggingface:/models   # Cache für Kokoro-Stimmen
-      - ./data:/app/data
-      - ./.env:/app/.env
+      # Kokoro speichert interne Modelldaten in /app/api/voices und /app/api/models
+      # Optional: Du kannst ./data mappen, wenn Kokoro Dateien lokal speichern soll
+      - ./data:/app/data        
     environment:
       - TZ=Europe/Berlin
-      - PYTHONUNBUFFERED=1
     deploy:
       resources:
         reservations:
@@ -82,11 +75,6 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8800/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
     restart: unless-stopped
     networks:
       - caddy-net
@@ -101,7 +89,7 @@ services:
       - "8803:8800"             # Host-Port 8803 mappt auf internen Port 8800
     volumes:
       - ./ai_service_ltx:/app
-      - ./huggingface:/models   # Cache für die 22B Video-Weights
+      - ./huggingface:/models   # Cache für die Video-Weights
       - ./data:/app/data        # Speichert die .mp4 Dateien direkt hier ab
       - ./.env:/app/.env
     environment:

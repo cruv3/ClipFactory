@@ -3,8 +3,8 @@ import requests
 import os
 
 from utils import StoryStrategy, generate_story_id
-import config  # <--- Nur noch der reine Modul-Import
-from ai_service_provider import AIServiceProvider
+import config
+from main_service.story_analyzer_utils.ai_service_provider import AIServiceProvider
 from story_analyzer_utils.generate_prompt import generate_prompt
 
 class StoryAnalyzer:
@@ -13,9 +13,6 @@ class StoryAnalyzer:
 
     def analyzer(self, story_text):      
         print(f"[*] Starting Analysis (Hardware Mode: {'RTX XX90' if config.USE_RTX_XX90 else '1660 Ti / Classic'})")
-        if not AIServiceProvider.ensure_service_ready("LLM", config.API_LLM_HEALTH):
-            print("[!] LLM Service is not ready. Aborting analysis.")
-            return None
 
         prompt = generate_prompt(
             story_text=story_text,
@@ -28,24 +25,18 @@ class StoryAnalyzer:
         # 2. PAYLOAD: Angepasst an dein FastAPI 'ScriptRequest' Model
         # ==============================================================
         payload = {
+            "model": config.LLM_MODEL,
             "prompt": prompt,
-            "model_id": config.LLM_MODEL
+            "format": "json",
+            "stream": False,
+            "keep_alive": 0
         }
 
         try:
-            # Timeout hochsetzen, da ein lokales LLM Zeit braucht
             response = requests.post(config.API_GENERATE_SCRIPT, json=payload, timeout=7200)
             response.raise_for_status()
-
-            # Antwort-Format aus deiner FastAPI: {"status": "success", "data": "..."}
             response_data = response.json()
-            raw_content = response_data.get("data", "").strip()
-
-            # Sicherheitshalber Markdown-Blöcke (```json) entfernen
-            if raw_content.startswith("```json"):
-                raw_content = raw_content.replace("```json", "").replace("```", "").strip()
-            elif raw_content.startswith("```"):
-                raw_content = raw_content.replace("```", "").strip()
+            raw_content = response_data.get("response", "").strip()
 
             parsed_json = json.loads(raw_content)
 
@@ -71,16 +62,16 @@ class StoryAnalyzer:
 
             return strategy
 
+        except json.JSONDecodeError as e:
+            print(f"[!] JSON Error (should not happen with Ollama format='json'): {e}")
+            print(f"[*] Raw LLM Content was: {raw_content}")
+            return None
         except Exception as e:
             print(f"[!] Critical Error in Master Intelligence: {e}")
             return None
-        
-        # ==============================================================
-        # 3. VRAM CLEANUP: Wird IMMER ausgeführt (Erfolg oder Fehler)
-        # ==============================================================
+
         finally:
-            print("[*] Analysis finished. Releasing LLM VRAM...")
-            AIServiceProvider.trigger_cleanup("LLM", config.API_LLM_CLEANUP)
+            print("[*] Analysis finished. (VRAM managed by Ollama)")
 
 
 # --- TEST RUN ---
