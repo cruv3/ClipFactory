@@ -28,13 +28,20 @@ services:
   # ==========================================
   # 2. KI-SERVICE: LLM (Gemma 3) - Port 8801
   # ==========================================
-  ai_llm:
-    image: ollama/ollama:latest
-    container_name: ai_llm_ollama
+  ai-llm:
+    build: ./ai_service_llm
+    container_name: ai_llm_director
     ports:
-      - "11434:11434"
+      - "8801:8800"             # Host-Port 8801 mappt auf internen Port 8800
     volumes:
-      - ./ollama_data:/root/.ollama
+      - ./ai_service_llm:/app
+      - ./huggingface:/models   # Cache für die 27B Weights
+      - ./data:/app/data
+      - ./.env:/app/.env
+    environment:
+      - TZ=Europe/Berlin
+      - HF_TOKEN=${HF_TOKEN}
+      - PYTHONUNBUFFERED=1
     deploy:
       resources:
         reservations:
@@ -42,6 +49,13 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
+    shm_size: '2gb' 
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8800/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
     networks:
       - caddy-net
 
