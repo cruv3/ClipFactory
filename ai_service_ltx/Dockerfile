@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/pytorch:24.01-py3
+FROM nvcr.io/nvidia/pytorch:24.10-py3
 
 # 1. System-Abhängigkeiten (FFmpeg ist hier der Star)
 RUN apt-get update && apt-get install -y \
