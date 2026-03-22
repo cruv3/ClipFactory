@@ -49,6 +49,13 @@ def generate_text(prompt: str, model_id: str) -> str:
 
         result = tokenizer.decode(outputs[0], skip_special_tokens=True)
         
+        # --- PRINT ---
+        print("\n" + "="*50)
+        print("--- LLM RAW OUTPUT ---")
+        print(result)
+        print("="*50 + "\n")
+        # --------------------
+        
         # --- DER WICHTIGSTE TEIL: MODELL VERNICHTEN ---
         del inputs
         del outputs
