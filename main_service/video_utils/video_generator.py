@@ -5,48 +5,78 @@ import subprocess
 import yt_dlp
 import time
 
-from config import USE_RTX_XX90, VIDEO_AI_URL, AI_GENERATED_DIR, VIDEO_CHUNKS_DIR
+import config
 
 class VideoGeneratorEngine:
     def __init__(self):
-        self.use_ai = USE_RTX_XX90
-        self.api_url = f"{VIDEO_AI_URL}/generate_video"
-
+        self.use_ai = config.USE_RTX_XX90
+    
     def get_background_video(self, strategy):
         """Entscheidet: KI-Szenen rendern oder YouTube-Chunks nutzen."""
-        
-        if self.use_ai and strategy.prompts_scene:
-            print(f"[*] RTX XX90 & Scene Prompts detected: Starting LTX-2.3 Master Render...")
-            ai_video_path = self._generate_ai_video(strategy)
-            if ai_video_path:
-                return ai_video_path
-            print("[!] AI Video failed, falling back to local chunks...")
+        if self.use_ai and hasattr(strategy, 'script_timeline') and strategy.script_timeline:
+            print(f"[*] AI-Mode: Triggering LTX-2.3 on Linux Server...")
+            return self._generate_ai_video(strategy)
 
-        print(f"[*] Using Classic Mode for strategy: {strategy.folder_name}")
         return self._get_available_chunk(strategy.folder_name, strategy.search_query)
-        
+
     def _generate_ai_video(self, strategy):
-        payload = {
-            "scenes": strategy.prompts_scene,
-            "folder_name": strategy.folder_name
-        }  
+        prompts = [block.get('visual_prompt', '') for block in strategy.script_timeline]
+        payload = {"scenes": prompts, "folder_name": strategy.folder_name}
 
         try:
-            print(f"[*] Sending 12 scenes to AI Service. This will take a while...")
-            response = requests.post(self.api_url, json=payload, timeout=3600)
+            # 1. Den Render-Request an den Linux-Server senden
+            response = requests.post(config.API_GENERATE_VIDEO, json=payload, timeout=7200)
             response.raise_for_status()
             
             data = response.json()
-            output_filename = f"{strategy.folder_name}_final_master.mp4"
-            final_path = os.path.join(AI_GENERATED_DIR, output_filename)
+            remote_paths = data.get("video_paths", [])
+            
+            if not config.TEST_RUN:
+                print("[*] TEST_RUN is False. Skipping heavy download. Using first remote path as reference.")
+                # Wir geben nur den Namen zurück, damit man sieht, dass es geklappt hat
+                return remote_paths[0] if remote_paths else None
 
-            if os.path.exists(final_path):
-                print(f"[✅] AI Master Video ready: {final_path}")
-                return final_path
+            print(f"[+] TEST_RUN active: Downloading {len(remote_paths)} clips to Windows...")
+            scene_dir = os.path.join(strategy.output_dir, "ai_scenes")
+            os.makedirs(scene_dir, exist_ok=True)
+            local_clips = []
+
+            for remote_path in remote_paths:
+                filename = os.path.basename(remote_path)
+                download_url = f"{config.VIDEO_BASE_URL}/download_video/{filename}"
                 
+                # Datei vom Linux-Server ziehen
+                with requests.get(download_url, stream=True) as r:
+                    r.raise_for_status()
+                    local_path = os.path.join(scene_dir, filename)
+                    with open(local_path, "wb") as f:
+                        for chunk in r.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                local_clips.append(local_path)
+
+            return self._merge_clips(local_clips, strategy)
+
         except Exception as e:
-            print(f"[!] Critical Error calling AI Video API: {e}")
+            print(f"[!] LTX API Error: {e}")
             return None
+
+    def _merge_clips(self, clips, strategy):
+        """Klebt die KI-Clips mit FFmpeg verlustfrei zusammen."""
+        if not clips: return None
+        if len(clips) == 1: return clips[0]
+
+        master_path = os.path.join(strategy.output_dir, "ai_master_bg.mp4")
+        list_path = os.path.join(strategy.output_dir, "concat_list.txt")
+
+        with open(list_path, "w") as f:
+            for c in clips:
+                f.write(f"file '{c.replace('\\', '/')}'\n")
+
+        # Schnelles Zusammenfügen ohne Re-Encoding
+        cmd = f'ffmpeg -y -f concat -safe 0 -i "{list_path}" -c copy "{master_path}"'
+        subprocess.run(cmd, shell=True, capture_output=True)
+        
+        return master_path
     
     def _download_and_slice(self, folder_name, search_query):
         clean_query = search_query.lower().replace("4k", "").replace("1080p", "").replace("no commentary", "").strip()
@@ -62,7 +92,7 @@ class VideoGeneratorEngine:
 
         print(f"\n[!] Inventory for '{folder_name}' empty. Searching YouTube: {search_query}")
         
-        category_dir = os.path.join(VIDEO_CHUNKS_DIR, folder_name)
+        category_dir = os.path.join(config.VIDEO_CHUNKS_DIR, folder_name)
         os.makedirs(category_dir, exist_ok=True)
         
         temp_video = os.path.join(category_dir, "temp_source.mp4")
@@ -123,7 +153,7 @@ class VideoGeneratorEngine:
             print(f"[!] FFmpeg failed: {e}")
 
     def _get_available_chunk(self, folder_name, search_query):
-        category_dir = os.path.join(VIDEO_CHUNKS_DIR, folder_name)
+        category_dir = os.path.join(config.VIDEO_CHUNKS_DIR, folder_name)
         os.makedirs(category_dir, exist_ok=True)
         
         chunks = sorted(glob.glob(os.path.join(category_dir, "chunk_*.mp4")))

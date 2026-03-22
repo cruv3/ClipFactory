@@ -2,7 +2,9 @@ import os
 import json
 from .trending import get_trending_backgrounds
 
-def generate_prompt(story_text, use_rtx_XX90, strategy_log, video_history_path):
+import config
+
+def generate_prompt(story_text, use_rtx_XX90, strategy_log, video_history_path, word_min=150, word_max=250):
     """
     Erstellt den finalen System-Prompt basierend auf der verfügbaren Hardware.
     """
@@ -34,12 +36,30 @@ def generate_prompt(story_text, use_rtx_XX90, strategy_log, video_history_path):
 
     # 3. Hardware-Check & Modus-Definition
     if use_rtx_XX90:
-        mode_instruction = """
-        MODE: HIGH-END AI VIDEO (RTX 3090)
-        - You MUST generate 12 detailed visual scenes ('prompts_scene').
-        - Each scene: 5-6 seconds, cinematic description (lighting, camera angle).
+        mode_instruction = f"""
+        MODE: HIGH-END CINEMATIC DIRECTOR (RTX 3090)
+        - GOAL: Create a high-retention Reddit-style video (approx. 65 seconds).
+        - WORD COUNT: The total narration MUST be between {word_min} and {word_max} words. 
+        - DO NOT SUMMARIZE. Use the full emotional range of the story. Extend story if needed.
+        
+        SCENE RULES:
+        1. Generate EXACTLY 12-15 scenes. Number them correctly in the JSON.
+        2. NO REPETITION in visual prompts. Do not just say 'intense expressions' every time.
+        3. VISUAL VARIETY: Mix 'Extreme Close-ups', 'Wide Shots', 'Dutch Angles', and 'Slow Motion'.
+        4. LTX-SPECIFIC: Describe textures (silk, tears, wood), lighting (golden hour, harsh fluorescent, candlelight), and movement (panning left, handheld shake, zooming in).
+
+        EXAMPLE OF A GOOD SCENE:
+        {{
+            "narration": "I looked at her shimmering white dress - the one MY education paid for - and I just... snapped.",
+            "visual_prompt": "Extreme close-up on the maid of honor's eyes, pupils dilating with rage, reflection of the white wedding dress in her iris. Cinematic lighting, moody shadows, 8k, hyper-detailed skin textures."
+        }}
         """
-        json_fields = '"prompts_scene": ["Scene 1...", "Scene 12..."],'
+        json_fields = """"script_timeline": [
+            {
+                "narration": "Spoken text (2-3 sentences per scene to reach word count)",
+                "visual_prompt": "Unique cinematic LTX prompt (no 'intense expressions' copy-paste!)"
+            }
+        ],"""
     else:
         live_trends = get_trending_backgrounds()
         mode_instruction = f"""
@@ -53,6 +73,7 @@ def generate_prompt(story_text, use_rtx_XX90, strategy_log, video_history_path):
 
     # 4. Der finale Prompt-String
     prompt = f"""
+    You are an expert viral video strategist and director.
     Analyze this story and create a viral video strategy.
     
     STORY: "{story_text}"
@@ -64,7 +85,7 @@ def generate_prompt(story_text, use_rtx_XX90, strategy_log, video_history_path):
     CHANNELS RULES:
     {strategy_rules}
 
-    Return ONLY a raw JSON:
+    Return ONLY a raw JSON object matching this exact schema:
     {{
         "voice": "af_bella",
         "voice_speed": 1.25,

@@ -57,14 +57,11 @@ services:
   # 3. KI-SERVICE: TTS (Kokoro) - Port 8802
   # ==========================================
   ai-tts:
-    # Das fertige, offizielle GPU-Image (zieht alle Modelle automatisch)
     image: ghcr.io/remsky/kokoro-fastapi-gpu:latest
     container_name: ai_tts_director
     ports:
-      - "8802:8880"             # Host 8802 mappt auf Kokoros internen Port 8880
+      - "8802:8880"
     volumes:
-      # Kokoro speichert interne Modelldaten in /app/api/voices und /app/api/models
-      # Optional: Du kannst ./data mappen, wenn Kokoro Dateien lokal speichern soll
       - ./data:/app/data        
     environment:
       - TZ=Europe/Berlin

@@ -23,7 +23,7 @@ class StoryStrategy:
     description: str
     tags: str
     action_words: list
-    prompts_scene: List[str] = field(default_factory=list)
+    script_timeline: list = field(default_factory=list)
 
 def clean_data_folder():
     print(f"\n[*] Cleaning factory floor ({DATA_DIR})...")

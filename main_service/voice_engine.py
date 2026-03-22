@@ -4,74 +4,51 @@ import whisper
 import time
 import warnings
 import re
-import shutil
 
 warnings.filterwarnings("ignore", category=UserWarning)
+os.environ["TQDM_DISABLE"] = "1"
+os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
 
 import config
-from main_service.story_analyzer_utils.ai_service_provider import AIServiceProvider
 
 class VoiceEngine:
     def __init__(self):
-        # Whisper laden wir lokal, da es CPU-freundlich ist und Word-Timestamps braucht
-        print("[*] Loading Whisper model (base)...")
         self.model = whisper.load_model("base")
 
     def generate_audio(self, text, strategy):
-        """
-        Spricht den Text via Kokoro Microservice und speichert ihn lokal ab.
-        """
-        # 1. Health Check via Provider
-        if not AIServiceProvider.ensure_service_ready("VOICE", config.API_VOICE_HEALTH):
-            print("[!] VOICE Service is not ready. Aborting.")
-            return None
-        
-        # 2. Vorbereitung
         os.makedirs(strategy.output_dir, exist_ok=True)
         safe_text = self._sanitize_text(text)
-        local_filename = "narrator.wav"
-        full_local_path = os.path.join(strategy.output_dir, local_filename)
+        filename = "narrator.wav"
+        full_output_path = os.path.join(strategy.output_dir, filename)
         
-        # 3. Payload für dein neues FastAPI VoiceRequest Model
+        clamped_speed = min(2.0, max(1.0, strategy.voice_speed))
+        print(f"[*] Sending text to Kokoro (Voice: {strategy.voice}, Speed: {clamped_speed})...")
         payload = {
-            "script_text": safe_text,
-            "folder_name": strategy.folder_name,
-            "voice_name": strategy.voice, # z.B. "af_bella" oder "am_adam"
-            "speed": min(2.0, max(0.5, strategy.voice_speed))
+            "model": "kokoro",
+            "input": safe_text,
+            "voice": strategy.voice,
+            "response_format": "wav",
+            "speed": clamped_speed,
         }
         
-        print(f"[*] Sending TTS Request to Kokoro Service (Voice: {strategy.voice})...")
-        
         try:
-            # Request an den Microservice
-            response = requests.post(config.API_GENERATE_VOICE, json=payload, timeout=300)
+            response = requests.post(config.API_GENERATE_VOICE, json=payload, timeout=600)
             response.raise_for_status()
             
-            data = response.json()
-            if data.get("status") == "success":
-                server_rel_path = data.get("rel_path") # z.B. "ai_generated/creepy_stories_voice.wav"
-                source_path = os.path.join(config.DATA_DIR, os.path.basename(server_rel_path))
+            with open(full_output_path, "wb") as audio_file:
+                audio_file.write(response.content)
                 
-                if os.path.exists(source_path):
-                    shutil.copy(source_path, full_local_path)
-                    print(f"[+] Audio successfully localized: {full_local_path}")
-                else:
-                    print(f"[!] Warning: Audio file created on server but not found at {source_path}")
-                    return None
-
-                return full_local_path
+            print(f"[+] Audio saved: {full_output_path}")
+            return full_output_path
             
-        except Exception as e:
-            print(f"[!] TTS Engine Error: {e}")
+        except requests.exceptions.ConnectionError:
+            print(f"[!] ERROR: Kokoro unreachable at {config.API_GENERATE_VOICE}")
             return None
-        finally:
-            # Optional: Cleanup Trigger für den Voice Service, falls du VRAM sparen willst
-            # AIServiceProvider.trigger_cleanup("VOICE", config.API_VOICE_CLEANUP)
-            pass
-
+        except Exception as e:
+            print(f"[!] TTS Error: {e}")
+            return None
+        
     def get_word_timestamps(self, audio_path):
-        """Erstellt präzise Word-Timestamps mit Whisper."""
-        print(f"[*] Analyzing timestamps for {audio_path}...")
         result = self.model.transcribe(audio_path, verbose=False, word_timestamps=True)
         
         word_data = []
@@ -83,10 +60,14 @@ class VoiceEngine:
                     "end": w['end']
                 })
         return word_data
-    
+        
     @staticmethod
     def _sanitize_text(text):
-        """Bereinigt Text für bessere TTS-Aussprache."""
+        """
+        Wandelt komplett großgeschriebene Wörter (ab 3 Buchstaben) in normale 
+        Schreibweise um, damit die TTS sie als Wort und nicht als Buchstabensalat liest.
+        Beispiel: "BROKENHEARTED" -> "Brokenhearted"
+        """
         def replace_caps(match):
             return match.group(0).capitalize() 
         return re.sub(r'\b[A-Z]{3,}\b', replace_caps, text)

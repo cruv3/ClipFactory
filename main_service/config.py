@@ -29,10 +29,16 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 USE_RTX_XX90 = True
 AI_SERVICE_IP = os.getenv("AI_SERVICE_IP", "192.168.2.124")
 
+if USE_RTX_XX90:
+    LLM_MODEL = os.getenv("LLM_MODEL", "qwen2.5:32b")
+    LLM_MODEL_BACKUP = os.getenv("LLM_MODEL_BACKUP", "gemma2:27b")
+else:
+    LLM_MODEL = os.getenv("LLM_MODEL_NONE_RTX", "gemma2:27b")
+    LLM_MODEL_BACKUP = os.getenv("LLM_MODEL_NONE_RTX_BACKUP", "")
+
 # ==========================================
 # 1. LLM Service (OLLAMA) -> Port 8801
 # ==========================================
-LLM_MODEL = os.getenv("LLM_MODEL", "qwen2.5:14b") # Oder 'qwen2.5:32b'
 LLM_BASE_URL = f"http://{AI_SERVICE_IP}:8801"
 API_GENERATE_SCRIPT = f"{LLM_BASE_URL}/api/generate" # Offizielle Ollama API
 # Hinweis: Ollama hat keinen /cleanup Endpunkt. 

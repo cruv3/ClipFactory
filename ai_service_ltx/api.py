@@ -2,8 +2,8 @@ from fastapi import FastAPI, HTTPException
 import sys
 import os
 from pathlib import Path
-import torch
 from huggingface_hub import hf_hub_download, snapshot_download
+from fastapi.responses import FileResponse
 
 # =================================================================
 # 1. DYNAMISCHER PFAD-HACK (Findet den Code immer!)
@@ -42,10 +42,41 @@ def generate_video_scenes(req: VideoRequest):
     """
     print("[*] Prüfe Modell-Dateien im Cache...")
     REPO_ID = "Lightricks/LTX-2.3"
-    ckpt_path = hf_hub_download(repo_id=REPO_ID, filename="ltx-2.3-22b-dev.safetensors")
-    lora_path = hf_hub_download(repo_id=REPO_ID, filename="ltx-2.3-22b-distilled-lora-384.safetensors")
-    upsampler_path = hf_hub_download(repo_id=REPO_ID, filename="ltx-2.3-spatial-upscaler-x2-1.0.safetensors")
-    gemma_path = snapshot_download(repo_id="google/gemma-3-4b-it")
+    HF_TOKEN = os.getenv("HF_TOKEN")
+    CACHE_DIR = "/models"
+
+    print(f"[*] Step 1/4: Checking Main Checkpoint (ltx-2.3-22b-dev.safetensors)...")
+    ckpt_path = hf_hub_download(
+        repo_id=REPO_ID, filename="ltx-2.3-22b-dev.safetensors", 
+        cache_dir=CACHE_DIR, token=HF_TOKEN
+    )
+    print(f"    [OK] Path: {ckpt_path}")
+
+    # 2. Distilled LoRA (Das Gehirn für den Speed)
+    print(f"[*] Step 2/4: Checking Distilled LoRA (384-distilled)...")
+    lora_path = hf_hub_download(
+        repo_id=REPO_ID, filename="ltx-2.3-22b-distilled-lora-384.safetensors", 
+        cache_dir=CACHE_DIR, token=HF_TOKEN
+    )
+    print(f"    [OK] Path: {lora_path}")
+
+    # 3. Upsampler
+    print(f"[*] Step 3/4: Checking Spatial Upsampler...")
+    upsampler_path = hf_hub_download(
+        repo_id=REPO_ID, filename="ltx-2.3-spatial-upscaler-x2-1.0.safetensors", 
+        cache_dir=CACHE_DIR, token=HF_TOKEN
+    )
+    print(f"    [OK] Path: {upsampler_path}")
+
+    # 4. Gemma 3 (Text Encoder)
+    print(f"[*] Step 4/4: Checking Gemma 3 4B (google/gemma-3-4b-it)...")
+    gemma_path = snapshot_download(
+        repo_id="google/gemma-3-4b-it", 
+        cache_dir=CACHE_DIR, token=HF_TOKEN
+    )
+    print(f"    [OK] Path: {gemma_path}")
+
+    print("\n[✅] ALL FILES VERIFIED. LOADING INTO VRAM...")
 
     print("[*] Initialisiere lokale LTX-Pipeline in den VRAM...")
     pipeline = TI2VidTwoStagesPipeline(
@@ -139,3 +170,10 @@ async def api_generate_video(req: VideoRequest):
         traceback.print_exc()
         cleanup() # Letztes Sicherheitsnetz
         raise HTTPException(status_code=500, detail=str(e))
+    
+@app.get("/download_video/{filename}")
+async def download_video(filename: str):
+    file_path = os.path.join(DATA_DIR, filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Video not found")
+    return FileResponse(file_path, media_type="video/mp4")
