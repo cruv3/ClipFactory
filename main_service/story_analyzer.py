@@ -34,7 +34,7 @@ class StoryAnalyzer:
 
         try:
             # Timeout hochsetzen, da ein lokales LLM Zeit braucht
-            response = requests.post(config.API_GENERATE_SCRIPT, json=payload, timeout=300)
+            response = requests.post(config.API_GENERATE_SCRIPT, json=payload, timeout=7200)
             response.raise_for_status()
 
             # Antwort-Format aus deiner FastAPI: {"status": "success", "data": "..."}
