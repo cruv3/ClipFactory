@@ -1,7 +1,9 @@
+import os
+os.environ["BNB_CUDA_VERSION"] = "130"
+
 from fastapi import FastAPI, HTTPException
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
-import os
 
 from request_model import ScriptRequest
 from vram_manager import cleanup
