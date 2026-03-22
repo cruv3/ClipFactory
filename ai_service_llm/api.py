@@ -18,24 +18,27 @@ def generate_text(prompt: str, model_id: str) -> str:
         tokenizer = AutoTokenizer.from_pretrained(model_id, token=hf_token, cache_dir=cache_dir)
         model = AutoModelForCausalLM.from_pretrained(
             model_id,
-            torch_dtype=torch.bfloat16,
+            dtype=torch.bfloat16,
             device_map="auto",
-            load_in_4bit=True, # Zwingend nötig für 27B auf 24GB VRAM
+            load_in_4bit=True,
             token=hf_token,
-            cache_dir=cache_dir
+            cache_dir=cache_dir,
+            low_cpu_mem_usage=True
         )
 
-        inputs = tokenizer(prompt, return_tensors="pt").to("cuda")
+        inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
         
-        print("[*] Generiere Skript...")
+        print(f"[*] Generiere Text (Modell läuft auf {model.device})...")
         with torch.no_grad():
             outputs = model.generate(
                 **inputs, 
                 max_new_tokens=2048, 
                 do_sample=True,
-                temperature=0.7
+                temperature=0.7,
+                top_p=0.9,
+                pad_token_id=tokenizer.eos_token_id
             )
-
+            
         result = tokenizer.decode(outputs[0], skip_special_tokens=True)
         
         # --- DER WICHTIGSTE TEIL: MODELL VERNICHTEN ---

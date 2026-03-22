@@ -1,49 +1,67 @@
 import requests
 import time
-from config import VIDEO_AI_URL, USE_RTX_XX90
+import config
 
 class AIServiceProvider:
     """
-    Basis-Klasse für alle Komponenten, die den High-End AI Service 
-    (RTX 3090 Master API) benötigen.
+    Zentrale Verwaltung für alle externen AI-Microservices.
+    Merkt sich für jeden Service einzeln, ob er online ist.
     """
-    service_verified = False
+    
+    # Status-Speicher für jeden einzelnen Service
+    _service_status = {
+        "LLM": False,
+        "VOICE": False,
+        "VIDEO": False
+    }
 
-    def __init__(self):
-        # Wir prüfen den Service nur, wenn die 3090 auch aktiv sein soll
-        if USE_RTX_XX90 and not AIServiceProvider.service_verified:
-            if not self._ensure_service_is_reachable():
-                print("[!] Warning: AI Master Service (RTX 3090) is not reachable!")
-                print("[*] Switching to local fallback mode (1660 Ti style).")
-                AIServiceProvider.service_verified = True 
-            else:
-                AIServiceProvider.service_verified = True
+    @classmethod
+    def ensure_service_ready(cls, service_name: str, health_url: str) -> bool:
+        """
+        Prüft, ob der angegebene Service erreichbar ist. 
+        Wartet geduldig, falls er gerade hochfährt.
+        """
+        if not config.USE_RTX_XX90:
+            print(f"[*] Fallback Mode active. Skipping remote check for {service_name}.")
+            return False
 
-    def _ensure_service_is_reachable(self):
-        """
-        Prüft den /health Endpunkt deines neuen AI-Services.
-        """
-        health_url = f"{VIDEO_AI_URL}/health"
-        print(f"[*] Checking AI Master Service at {health_url}...")
+        # Wenn wir schon wissen, dass er online ist, direkt True zurückgeben
+        if cls._service_status.get(service_name):
+            return True
+
+        print(f"[*] Checking {service_name} Service at {health_url}...")
         
-        # Wir geben dem Service 3 Versuche (falls er gerade noch Modelle lädt)
-        for attempt in range(3):
+        # Bis zu 2 Minuten warten (12 * 10s)
+        max_attempts = 12
+        for attempt in range(max_attempts):
             try:
-                response = requests.get(health_url, timeout=10)
+                response = requests.get(health_url, timeout=5)
                 if response.status_code == 200:
                     data = response.json()
-                    print(f"[+] AI Master Service is READY. GPU: {data.get('gpu', 'Unknown')}")
+                    print(f"[+] {service_name} Service is READY. (GPU: {data.get('gpu', 'Unknown')})")
+                    cls._service_status[service_name] = True
                     return True
-            except Exception:
-                print(f"[*] Attempt {attempt + 1}/3: Service still starting up...")
-                time.sleep(5)
+            except requests.exceptions.RequestException:
+                print(f"[*] {service_name} Attempt {attempt + 1}/{max_attempts}: Booting up...")
+                time.sleep(10)
         
+        print(f"[!] ERROR: {service_name} Service failed to respond in time.")
         return False
 
-    def trigger_vram_cleanup(self):
-        """Erlaubt es jeder Unterklasse, den VRAM der 3090 manuell zu putzen."""
+    @classmethod
+    def trigger_cleanup(cls, service_name: str, cleanup_url: str):
+        """
+        Schickt einen Cleanup-Befehl an den spezifischen Service, 
+        um dessen VRAM sofort freizugeben.
+        """
+        if not config.USE_RTX_XX90:
+            return
+            
         try:
-            requests.post(f"{VIDEO_AI_URL}/cleanup", timeout=10)
-            print("[*] VRAM Cleanup triggered via Provider.")
-        except:
-            pass
+            response = requests.post(cleanup_url, timeout=10)
+            if response.status_code == 200:
+                print(f"[*] {service_name} VRAM Cleanup successful.")
+            else:
+                print(f"[-] {service_name} VRAM Cleanup returned status {response.status_code}.")
+        except Exception as e:
+            print(f"[-] Failed to trigger {service_name} VRAM cleanup: {e}")

@@ -2,59 +2,56 @@ import json
 import requests
 import os
 
-from utils import StoryStrategy, generate_story_id, get_trending_backgrounds
-from config import (
-    DATA_DIR, 
-    OLLAMA_MODEL, OLLAMA_MODEL_BACKUP, STRATEGY_LOG, VIDEO_HISTORY_JSON,
-    USE_RTX_XX90, LLM_MODEL, API_GENERATE_SCRIPT
-)
-from scripts.ai_service_provider import AIServiceProvider
+from utils import StoryStrategy, generate_story_id
+import config  # <--- Nur noch der reine Modul-Import
+from ai_service_provider import AIServiceProvider
 from story_analyzer_utils.generate_prompt import generate_prompt
 
-class StoryAnalyzer(AIServiceProvider):
-    def __init__(self, ai_temp=0.7, ai_top_p=0.9):
-        # Ruft den Health-Check für den RTX 3090 Service auf
-        super().__init__()
-        
-        # Diese Liste wird im Classic-Mode an den Prompt übergeben
-        self.available_voices = [
-            "af_bella", "am_adam", "af_sky", "af_nicole", 
-            "am_michael", "bf_isabella", "bm_george"
-        ]
-        self.ai_temp = ai_temp
-        self.ai_top_p = ai_top_p
+class StoryAnalyzer:
+    def __init__(self):
+        pass
 
     def analyzer(self, story_text):      
-        print(f"[*] Starting Analysis (Hardware Mode: {'RTX 3090 / LTX' if USE_RTX_XX90 else '1660 Ti / Classic'})")
+        print(f"[*] Starting Analysis (Hardware Mode: {'RTX XX90' if config.USE_RTX_XX90 else '1660 Ti / Classic'})")
+        if not AIServiceProvider.ensure_service_ready("LLM", config.API_LLM_HEALTH):
+            print("[!] LLM Service is not ready. Aborting analysis.")
+            return None
 
         prompt = generate_prompt(
             story_text=story_text,
-            use_rtx_3090=USE_RTX_XX90,
-            strategy_log=STRATEGY_LOG,
-            video_history_path=VIDEO_HISTORY_JSON
+            use_rtx_XX90=config.USE_RTX_XX90,
+            strategy_log=config.STRATEGY_LOG,
+            video_history_path=config.VIDEO_HISTORY_JSON
         )
             
+        # ==============================================================
+        # 2. PAYLOAD: Angepasst an dein FastAPI 'ScriptRequest' Model
+        # ==============================================================
         payload = {
-            "model": LLM_MODEL,
             "prompt": prompt,
-            "stream": False,
-            "format": "json",
-            "options": {
-                "temperature": self.ai_temp,
-                "top_p": self.ai_top_p
-            }
+            "model_id": config.LLM_MODEL
         }
 
         try:
-            response = requests.post(API_GENERATE_SCRIPT, json=payload, timeout=120)
+            # Timeout hochsetzen, da ein lokales LLM Zeit braucht
+            response = requests.post(config.API_GENERATE_SCRIPT, json=payload, timeout=300)
             response.raise_for_status()
 
-            raw_content = response.json().get("response", "").strip()
+            # Antwort-Format aus deiner FastAPI: {"status": "success", "data": "..."}
+            response_data = response.json()
+            raw_content = response_data.get("data", "").strip()
+
+            # Sicherheitshalber Markdown-Blöcke (```json) entfernen
+            if raw_content.startswith("```json"):
+                raw_content = raw_content.replace("```json", "").replace("```", "").strip()
+            elif raw_content.startswith("```"):
+                raw_content = raw_content.replace("```", "").strip()
+
             parsed_json = json.loads(raw_content)
 
             category = parsed_json.get("folder_name", "master_clips").replace(" ", "_").lower()
             unique_id = f"{category}_{generate_story_id()}"
-            final_path = os.path.join(DATA_DIR, category, unique_id)
+            final_path = os.path.join(config.DATA_DIR, category, unique_id)
 
             strategy = StoryStrategy(
                 voice=parsed_json.get("voice", "af_bella"),
@@ -77,10 +74,18 @@ class StoryAnalyzer(AIServiceProvider):
         except Exception as e:
             print(f"[!] Critical Error in Master Intelligence: {e}")
             return None
+        
+        # ==============================================================
+        # 3. VRAM CLEANUP: Wird IMMER ausgeführt (Erfolg oder Fehler)
+        # ==============================================================
+        finally:
+            print("[*] Analysis finished. Releasing LLM VRAM...")
+            AIServiceProvider.trigger_cleanup("LLM", config.API_LLM_CLEANUP)
+
 
 # --- TEST RUN ---
 if __name__ == "__main__":
-    analyzer_tool = StoryAnalyzer()\
+    analyzer_tool = StoryAnalyzer()
     
     test_story = """
     AITA for 'accidentally' revealing my sister's pregnancy at her own wedding?... 
@@ -108,7 +113,7 @@ if __name__ == "__main__":
         
         if strategy.prompts_scene:
             print(f"VISUALS: {len(strategy.prompts_scene)} AI-Scenes generated.")
-            for i, scene in enumerate(strategy.prompts_scene[:3]): # Zeige nur die ersten 3
+            for i, scene in enumerate(strategy.prompts_scene[:3]): 
                 print(f"  Scene {i+1}: {scene[:80]}...")
         else:
             print(f"VISUALS: Classic Mode (Search: {strategy.search_query})")

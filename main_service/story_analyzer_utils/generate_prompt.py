@@ -2,7 +2,7 @@ import os
 import json
 from .trending import get_trending_backgrounds
 
-def generate_prompt(story_text, use_rtx_3090, strategy_log, video_history_path):
+def generate_prompt(story_text, use_rtx_XX90, strategy_log, video_history_path):
     """
     Erstellt den finalen System-Prompt basierend auf der verfügbaren Hardware.
     """
@@ -33,7 +33,7 @@ def generate_prompt(story_text, use_rtx_3090, strategy_log, video_history_path):
     
 
     # 3. Hardware-Check & Modus-Definition
-    if use_rtx_3090:
+    if use_rtx_XX90:
         mode_instruction = """
         MODE: HIGH-END AI VIDEO (RTX 3090)
         - You MUST generate 12 detailed visual scenes ('prompts_scene').
