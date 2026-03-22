@@ -26,11 +26,10 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 LLM_MODEL = os.getenv("LLM_MODEL")
 AI_SERVICE_IP = os.getenv("AI_SERVICE_IP", "192.168.2.124:8800")
 AI_BASE_URL = f"http://{AI_SERVICE_IP}"
-API_GENERATE_SCRIPT = f"{AI_BASE_URL}/generate_script"
-API_GENERATE_VOICE  = f"{AI_BASE_URL}/generate_voice"
-API_GENERATE_VIDEO  = f"{AI_BASE_URL}/generate_video"
-API_VRAM_CLEANUP    = f"{AI_BASE_URL}/cleanup"
-API_HEALTH_CHECK    = f"{AI_BASE_URL}/health"
+API_GENERATE_SCRIPT = f"{AI_BASE_URL}:8801/generate_script"
+API_GENERATE_VOICE  = f"{AI_BASE_URL}:8802/generate_voice"
+API_GENERATE_VIDEO  = f"{AI_BASE_URL}:8803/generate_video"
+
 
 WORD_MIN = int(os.getenv("WORD_MIN", 150))
 WORD_MAX = int(os.getenv("WORD_MAX", 250))

@@ -29,4 +29,4 @@ ENV PYTHONPATH=/app
 # Damit MoviePy auf Linux nicht nach 'magick.exe' sucht
 ENV IMAGEMAGICK_BINARY=/usr/bin/convert 
 
-CMD ["python", "scripts/main.py"]
+CMD ["python", "main.py"]

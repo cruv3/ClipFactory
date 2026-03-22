@@ -1,36 +1,44 @@
 services:
-  # --- DEINE VIDEO FACTORY (DIE LOGIK) ---
+  # ==========================================
+  # 1. DEINE VIDEO FACTORY (DIE HAUPT-APP)
+  # ==========================================
   app:
-    build: .
-    container_name: viral_video_factory
+    build: ./main_service
+    container_name: main_service
     volumes:
-      - .:/app
+      - ./main_service:/app
       - ./secrets:/app/secrets
-      - ./data:/app/data
+      - ./data:/app/data        # Hier landen alle fertigen Videos und Audios
       - ./.env:/app/.env
-      - ./output:/app/output
     environment:
       - TZ=Europe/Berlin
       - PYTHONUNBUFFERED=1
+    # Wartet darauf, dass die KIs hochgefahren sind
     depends_on:
-      ai-master:
+      ai-llm:
         condition: service_healthy
-    networks:
-      - caddy-net
+      ai-tts:
+        condition: service_healthy
+      ai-video:
+        condition: service_healthy
     restart: unless-stopped
 
-  ai-master:
-    build: ./ai_service
-    container_name: ai_director
+  # ==========================================
+  # 2. KI-SERVICE: LLM (Gemma 3) - Port 8801
+  # ==========================================
+  ai-llm:
+    build: ./ai_service_llm
+    container_name: ai_llm_director
     ports:
-      - "8800:8800"
+      - "8801:8800"             # Host-Port 8801 mappt auf internen Port 8800
     volumes:
-      - ./huggingface:/models
-      - ./secrets:/app/secrets
+      - ./ai_service_llm:/app
+      - ./huggingface:/models   # Cache für die 27B Weights
+      - ./data:/app/data
       - ./.env:/app/.env
     environment:
       - TZ=Europe/Berlin
-      - HF_TOKEN=${HF_TOKEN} # Dein HuggingFace Token für Gemma & LTX
+      - HF_TOKEN=${HF_TOKEN}
       - PYTHONUNBUFFERED=1
     deploy:
       resources:
@@ -39,18 +47,73 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
-
     shm_size: '2gb' 
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8800/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s # LTX-2.3 braucht Zeit zum Initialisieren
     restart: unless-stopped
-    networks:
-      - caddy-net
 
-networks:
-  caddy-net:
-    external: true
+  # ==========================================
+  # 3. KI-SERVICE: TTS (Kokoro) - Port 8802
+  # ==========================================
+  ai-tts:
+    build: ./ai_service_tts
+    container_name: ai_tts_director
+    ports:
+      - "8802:8800"             # Host-Port 8802 mappt auf internen Port 8800
+    volumes:
+      - ./ai_service_tts:/app
+      - ./huggingface:/models   # Cache für Kokoro-Stimmen
+      - ./data:/app/data
+      - ./.env:/app/.env
+    environment:
+      - TZ=Europe/Berlin
+      - PYTHONUNBUFFERED=1
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8800/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # ==========================================
+  # 4. KI-SERVICE: VIDEO (LTX-2.3) - Port 8803
+  # ==========================================
+  ai-video:
+    build: ./ai_service_ltx
+    container_name: ai_video_director
+    ports:
+      - "8803:8800"             # Host-Port 8803 mappt auf internen Port 8800
+    volumes:
+      - ./ai_service_ltx:/app
+      - ./huggingface:/models   # Cache für die 22B Video-Weights
+      - ./data:/app/data        # Speichert die .mp4 Dateien direkt hier ab
+      - ./.env:/app/.env
+    environment:
+      - TZ=Europe/Berlin
+      - HF_TOKEN=${HF_TOKEN}
+      - PYTHONUNBUFFERED=1
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    shm_size: '4gb'             # Mehr Shared Memory für den massiven Video-Renderprozess
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8800/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s         # Video-Modell braucht beim ersten Mal länger
+    restart: unless-stopped
