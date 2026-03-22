@@ -22,6 +22,8 @@ services:
       ai-video:
         condition: service_healthy
     restart: unless-stopped
+    networks:
+      - caddy-net
 
   # ==========================================
   # 2. KI-SERVICE: LLM (Gemma 3) - Port 8801
@@ -54,6 +56,8 @@ services:
       timeout: 10s
       retries: 3
     restart: unless-stopped
+    networks:
+      - caddy-net
 
   # ==========================================
   # 3. KI-SERVICE: TTS (Kokoro) - Port 8802
@@ -84,6 +88,8 @@ services:
       timeout: 10s
       retries: 3
     restart: unless-stopped
+    networks:
+      - caddy-net
 
   # ==========================================
   # 4. KI-SERVICE: VIDEO (LTX-2.3) - Port 8803
@@ -117,3 +123,9 @@ services:
       retries: 3
       start_period: 60s         # Video-Modell braucht beim ersten Mal länger
     restart: unless-stopped
+    networks:
+      - caddy-net
+
+networks:
+  caddy-net:
+    external: true
