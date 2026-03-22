@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/pytorch:24.01-py3
+FROM nvcr.io/nvidia/pytorch:26.02-py3
 
 # 1. System-Abhängigkeiten (espeak-ng ist Pflicht für Kokoro!)
 RUN apt-get update && apt-get install -y \

@@ -4,52 +4,74 @@ import whisper
 import time
 import warnings
 import re
+import shutil
 
 warnings.filterwarnings("ignore", category=UserWarning)
-os.environ["TQDM_DISABLE"] = "1"
-os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
 
-from config import KOKORO_URL, KOKORO_URL_WEB
+import config
+from ai_service_provider import AIServiceProvider
 
 class VoiceEngine:
     def __init__(self):
-        self.model_verified = self.verify_kokoro()
+        # Whisper laden wir lokal, da es CPU-freundlich ist und Word-Timestamps braucht
+        print("[*] Loading Whisper model (base)...")
         self.model = whisper.load_model("base")
 
     def generate_audio(self, text, strategy):
+        """
+        Spricht den Text via Kokoro Microservice und speichert ihn lokal ab.
+        """
+        # 1. Health Check via Provider
+        if not AIServiceProvider.ensure_service_ready("VOICE", config.API_VOICE_HEALTH):
+            print("[!] VOICE Service is not ready. Aborting.")
+            return None
+        
+        # 2. Vorbereitung
         os.makedirs(strategy.output_dir, exist_ok=True)
         safe_text = self._sanitize_text(text)
-        filename = "narrator.wav"
-        full_output_path = os.path.join(strategy.output_dir, filename)
+        local_filename = "narrator.wav"
+        full_local_path = os.path.join(strategy.output_dir, local_filename)
         
-        clamped_speed = min(2.0, max(1.0, strategy.voice_speed))
-        print(f"[*] Sending text to Kokoro (Voice: {strategy.voice}, Speed: {clamped_speed})...")
+        # 3. Payload für dein neues FastAPI VoiceRequest Model
         payload = {
-            "model": "kokoro",
-            "input": safe_text,
-            "voice": strategy.voice,
-            "response_format": "wav",
-            "speed": clamped_speed,
+            "script_text": safe_text,
+            "folder_name": strategy.folder_name,
+            "voice_name": strategy.voice, # z.B. "af_bella" oder "am_adam"
+            "speed": min(2.0, max(0.5, strategy.voice_speed))
         }
         
+        print(f"[*] Sending TTS Request to Kokoro Service (Voice: {strategy.voice})...")
+        
         try:
-            response = requests.post(KOKORO_URL, json=payload, timeout=600)
+            # Request an den Microservice
+            response = requests.post(config.API_GENERATE_VOICE, json=payload, timeout=300)
             response.raise_for_status()
             
-            with open(full_output_path, "wb") as audio_file:
-                audio_file.write(response.content)
+            data = response.json()
+            if data.get("status") == "success":
+                server_rel_path = data.get("rel_path") # z.B. "ai_generated/creepy_stories_voice.wav"
+                source_path = os.path.join(config.DATA_DIR, os.path.basename(server_rel_path))
                 
-            print(f"[+] Audio saved: {full_output_path}")
-            return full_output_path
+                if os.path.exists(source_path):
+                    shutil.copy(source_path, full_local_path)
+                    print(f"[+] Audio successfully localized: {full_local_path}")
+                else:
+                    print(f"[!] Warning: Audio file created on server but not found at {source_path}")
+                    return None
+
+                return full_local_path
             
-        except requests.exceptions.ConnectionError:
-            print(f"[!] ERROR: Kokoro unreachable at {KOKORO_URL}")
-            return None
         except Exception as e:
-            print(f"[!] TTS Error: {e}")
+            print(f"[!] TTS Engine Error: {e}")
             return None
-        
+        finally:
+            # Optional: Cleanup Trigger für den Voice Service, falls du VRAM sparen willst
+            # AIServiceProvider.trigger_cleanup("VOICE", config.API_VOICE_CLEANUP)
+            pass
+
     def get_word_timestamps(self, audio_path):
+        """Erstellt präzise Word-Timestamps mit Whisper."""
+        print(f"[*] Analyzing timestamps for {audio_path}...")
         result = self.model.transcribe(audio_path, verbose=False, word_timestamps=True)
         
         word_data = []
@@ -62,29 +84,9 @@ class VoiceEngine:
                 })
         return word_data
     
-    def verify_kokoro(self):
-        print(f"[*] Checking Kokoro TTS at {KOKORO_URL_WEB}...")
-        try:
-            response = requests.get(KOKORO_URL_WEB, timeout=3)
-            
-            if response.status_code == 200:
-                print("[+] Kokoro TTS is ready.")
-                return True
-            return False
-        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
-            print(f"[!] Kokoro TTS not reachable yet at {KOKORO_URL_WEB}...")
-            return False
-        except Exception as e:
-            print(f"[!] Unexpected TTS Check Error: {e}")
-            return False
-        
     @staticmethod
     def _sanitize_text(text):
-        """
-        Wandelt komplett großgeschriebene Wörter (ab 3 Buchstaben) in normale 
-        Schreibweise um, damit die TTS sie als Wort und nicht als Buchstabensalat liest.
-        Beispiel: "BROKENHEARTED" -> "Brokenhearted"
-        """
+        """Bereinigt Text für bessere TTS-Aussprache."""
         def replace_caps(match):
             return match.group(0).capitalize() 
         return re.sub(r'\b[A-Z]{3,}\b', replace_caps, text)
@@ -94,10 +96,6 @@ if __name__ == "__main__":
     import dataclasses
 
     engine = VoiceEngine()
-
-    while not engine.model_verified:
-        time.sleep(10)
-        engine.model_verified = engine.verify_kokoro()
         
     # Genau ~250 Wörter: Perfekt für einen Stress-Test von Kokoro & Whisper!
     test_text = """
@@ -125,6 +123,7 @@ if __name__ == "__main__":
         description: str
         tags: str
         output_dir: str
+        voice_speed: float
         
     test_strategy = MockStrategy(
         voice="am_onyx",

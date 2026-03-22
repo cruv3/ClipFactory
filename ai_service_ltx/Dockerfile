@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/pytorch:24.10-py3 
+FROM nvcr.io/nvidia/pytorch:26.02-py3
 
 RUN apt-get update && apt-get install -y git ffmpeg libsm6 libxext6 && rm -rf /var/lib/apt/lists/*
 RUN pip install --upgrade pip

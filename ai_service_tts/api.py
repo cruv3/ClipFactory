@@ -19,7 +19,7 @@ def generate_audio(text: str, output_path: str, voice_name: str, speed: float):
     try:
         # Lang-Code bestimmen (z.B. 'a' für American 'af_bella')
         lang = voice_name[0] 
-        pipeline = KPipeline(lang_code=lang)
+        pipeline = KPipeline(lang_code=lang, repo_id='hexgrad/Kokoro-82M')
 
         # Generierung
         generator = pipeline(
