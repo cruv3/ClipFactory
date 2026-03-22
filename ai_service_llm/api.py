@@ -1,6 +1,7 @@
 import os
 os.environ["BNB_CUDA_VERSION"] = "130"
 
+import re
 from fastapi import FastAPI, HTTPException
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
@@ -44,10 +45,20 @@ def generate_text(prompt: str, model_id: str) -> str:
                 do_sample=True,
                 temperature=0.7,
                 top_p=0.9,
+                repetition_penalty=1.2,
                 pad_token_id=tokenizer.eos_token_id
             )
 
-        result = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        full_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+        json_match = re.search(r"(\{.*?\})", full_text, re.DOTALL)
+
+        if json_match:
+            result = json_match.group(1)
+            print("[+] Erstes JSON erfolgreich extrahiert.")
+        else:
+            result = full_text # Fallback
+            print("[!] Kein JSON im Output gefunden.")
         
         # --- PRINT ---
         print("\n" + "="*50)
