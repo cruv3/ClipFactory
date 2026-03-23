@@ -79,7 +79,7 @@ def generate_video_scenes(req: VideoRequest):
     print("\n[✅] ALL FILES VERIFIED. LOADING INTO VRAM...")
 
     print("[*] Initialisiere lokale LTX-Pipeline in den VRAM...")
-    default_sd_ops = SDOps()
+    video_sd_ops = SDOps(name="ltx_v_standard_ops")
 
     pipeline = TI2VidTwoStagesPipeline(
         checkpoint_path=ckpt_path,
@@ -87,7 +87,7 @@ def generate_video_scenes(req: VideoRequest):
             LoraPathStrengthAndSDOps(
                 path=lora_path, 
                 strength=1.0, 
-                sd_ops=default_sd_ops 
+                sd_ops=video_sd_ops 
             )
         ],
         spatial_upsampler_path=upsampler_path,
