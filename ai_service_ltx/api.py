@@ -72,9 +72,9 @@ def generate_video_scenes(req: VideoRequest):
     print(f"    [OK] Path: {upsampler_path}")
 
     # 4. Gemma 3 (Text Encoder)
-    print(f"[*] Step 4/4: Checking Gemma 3 4B (google/gemma-3-12b-it)...")
+    print(f"[*] Step 4/4: Checking Gemma 3 4B (google/gemma-3-12b-it-qat-q4_0-unquantized)...")
     gemma_path = snapshot_download(
-        repo_id="unsloth/gemma-3-12b-it-bnb-4bit",
+        repo_id="google/gemma-3-12b-it-qat-q4_0-unquantized",
         cache_dir=CACHE_DIR, token=HF_TOKEN
     )
     print(f"    [OK] Path: {gemma_path}")
