@@ -8,3 +8,5 @@ diffusers
 afetensors 
 imageio 
 huggingface_hub
+bitsandbytes
+accelerate
