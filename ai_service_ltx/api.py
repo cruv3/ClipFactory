@@ -106,15 +106,15 @@ def generate_video_scenes(req: VideoRequest):
             print(f"[*] Rendere Szene {i+1}/{len(req.scenes)}...")
             
             tiling_config = TilingConfig.default()
-            num_frames = 121
+            num_frames = 65
 
             # Rendern
             video, audio = pipeline(
                 prompt=prompt,
                 negative_prompt="shaky, low quality, worst quality, deformed, distorted, static",
                 seed=42 + i,
-                height=832,
-                width=448,
+                height=512,
+                width=320,
                 num_frames=num_frames,
                 frame_rate=24.0,
                 num_inference_steps=25,
