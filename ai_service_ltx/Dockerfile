@@ -12,7 +12,7 @@ RUN pip install /opt/LTX-2/packages/ltx-core
 RUN pip install /opt/LTX-2/packages/ltx-pipelines
 
 # API Abhängigkeiten
-RUN pip install fastapi uvicorn pydantic accelerate torchvision transformers diffusers safetensors imageio huggingface_hub
+RUN pip install -r requirements.txt
 
 WORKDIR /app
 CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8800"]
