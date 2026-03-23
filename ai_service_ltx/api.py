@@ -1,6 +1,9 @@
 from fastapi import FastAPI, HTTPException
 import sys
 import os
+
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+
 from pathlib import Path
 from huggingface_hub import hf_hub_download, snapshot_download
 from fastapi.responses import FileResponse
@@ -93,7 +96,7 @@ def generate_video_scenes(req: VideoRequest):
         spatial_upsampler_path=upsampler_path,
         gemma_root=gemma_path,
         loras=[],
-        quantization=QuantizationPolicy.fp8_cast()
+        quantization=QuantizationPolicy.fp8_cast(),
     )
 
     video_paths = []

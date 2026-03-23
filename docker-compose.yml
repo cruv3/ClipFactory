@@ -57,7 +57,7 @@ services:
   # 3. KI-SERVICE: TTS (Kokoro) - Port 8802
   # ==========================================
   ai-tts:
-    image: ghcr.io/remsky/kokoro-fastapi-gpu:latest
+    image: ghcr.io/remsky/kokoro-fastapi:latest
     container_name: ai_tts_director
     ports:
       - "8802:8880"
