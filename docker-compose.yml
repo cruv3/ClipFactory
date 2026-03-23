@@ -93,6 +93,7 @@ services:
       - TZ=Europe/Berlin
       - HF_TOKEN=${HF_TOKEN}
       - PYTHONUNBUFFERED=1
+      - PYTORCH_ALLOC_CONF=expandable_segments:True
     deploy:
       resources:
         reservations:
