@@ -9,11 +9,11 @@ import config
 
 class VideoGeneratorEngine:
     def __init__(self):
-        self.use_ai = config.USE_RTX_XX90
+        pass
     
     def get_background_video(self, strategy):
         """Entscheidet: KI-Szenen rendern oder YouTube-Chunks nutzen."""
-        if self.use_ai and hasattr(strategy, 'script_timeline') and strategy.script_timeline:
+        if config.USE_RTX_XX90 and hasattr(strategy, 'script_timeline') and strategy.script_timeline:
             print(f"[*] AI-Mode: Triggering LTX-2.3 on Linux Server...")
             return self._generate_ai_video(strategy)
 
@@ -25,7 +25,7 @@ class VideoGeneratorEngine:
 
         try:
             # 1. Den Render-Request an den Linux-Server senden
-            response = requests.post(config.API_GENERATE_VIDEO, json=payload, timeout=7200)
+            response = requests.post(config.API_GENERATE_VIDEO, json=payload, timeout=36000)
             response.raise_for_status()
             
             data = response.json()

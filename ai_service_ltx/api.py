@@ -22,7 +22,7 @@ else:
 from ltx_pipelines.ti2vid_two_stages import TI2VidTwoStagesPipeline
 from ltx_core.model.video_vae import TilingConfig, get_video_chunks_number
 from ltx_core.components.guiders import MultiModalGuiderParams
-from ltx_core.loader import LoraPathStrengthAndSDOps
+from ltx_core.loader import LoraPathStrengthAndSDOps, SDOps
 from ltx_core.quantization import QuantizationPolicy
 from ltx_pipelines.utils.media_io import encode_video
 
@@ -79,13 +79,21 @@ def generate_video_scenes(req: VideoRequest):
     print("\n[✅] ALL FILES VERIFIED. LOADING INTO VRAM...")
 
     print("[*] Initialisiere lokale LTX-Pipeline in den VRAM...")
+    default_sd_ops = SDOps()
+
     pipeline = TI2VidTwoStagesPipeline(
         checkpoint_path=ckpt_path,
-        distilled_lora=[LoraPathStrengthAndSDOps(path=lora_path, strength=1.0)],
+        distilled_lora=[
+            LoraPathStrengthAndSDOps(
+                path=lora_path, 
+                strength=1.0, 
+                sd_ops=default_sd_ops 
+            )
+        ],
         spatial_upsampler_path=upsampler_path,
         gemma_root=gemma_path,
         loras=[],
-        quantization=QuantizationPolicy.fp8_cast() # PFLICHT für die RTX 3090!
+        quantization=QuantizationPolicy.fp8_cast()
     )
 
     video_paths = []
